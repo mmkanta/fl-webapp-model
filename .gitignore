@@ -1,0 +1,5 @@
+__pycache__/
+
+resources/temp/*
+
+!resources/temp/test.txt
