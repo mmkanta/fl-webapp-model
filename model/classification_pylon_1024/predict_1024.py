@@ -180,14 +180,15 @@ def main(file_location, content_type):
     image = preprocess(image_load)
     pred, seg, all_pred_class, all_pred_df,risk_dict = predict(image, net_predict, threshold_dict, class_dict)
     
-    os.makedirs(os.path.join(os.path.dirname(file_location), 'result'), exist_ok=True)
-    
     path = os.path.join(os.path.dirname(file_location), 'result')
+    if not os.path.exists(path):
+        os.makedirs(path)
+    
     for i_class in important_finding:
         cam = overlay_cam(np.array(image_load), seg[0, class_dict[i_class]])
 
         cam = cv2.cvtColor(np.float32(cam*255), cv2.COLOR_BGR2RGB)
         cam = cv2.resize(cam, (0,0), fx=0.5, fy=0.5)
-        cv2.imwrite(path + '\\' + i_class + '.png', cam)
+        cv2.imwrite(os.path.join(path, i_class + '.png'), cam)
 
     return all_pred_df
