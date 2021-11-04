@@ -184,11 +184,16 @@ def main(file_location, content_type):
     if not os.path.exists(path):
         os.makedirs(path)
     
+    if ('dicom' in str(content_type) or 'octet-stream' in str(content_type)) and  image_load.shape[0] > 1500:
+        scale = 1024/image_load.shape[0]
+        image_load = cv2.resize(image_load, (0,0), fx=scale, fy=scale)
+
     for i_class in important_finding:
         cam = overlay_cam(np.array(image_load), seg[0, class_dict[i_class]])
 
+        scale = 512/cam.shape[0]
         cam = cv2.cvtColor(np.float32(cam*255), cv2.COLOR_BGR2RGB)
-        cam = cv2.resize(cam, (0,0), fx=0.5, fy=0.5)
+        cam = cv2.resize(cam, (0,0), fx=scale, fy=scale)
         cv2.imwrite(os.path.join(path, i_class + '.png'), cam)
 
     return all_pred_df

@@ -12,6 +12,7 @@ router = APIRouter()
 def remove_file(path):
     if os.path.exists(path):
         shutil.rmtree(path)
+        print('end')
 
 @router.post("", status_code=200)
 def index(model_name: str = Form(...), file: UploadFile = File(...), background_tasks: BackgroundTasks = BackgroundTasks()):
@@ -34,6 +35,7 @@ def index(model_name: str = Form(...), file: UploadFile = File(...), background_
         with open(file_location, "wb") as file_object:
             file_object.write(file.file.read())
         if model_name == "classification_pylon_1024":
+            print('start')
             result = pylon_predict(file_location, file.content_type)
             with open(os.path.join(file_directory, 'result', 'prediction.txt'), 'w') as f:
                 json.dump(result, f)

@@ -11,6 +11,9 @@ uvicorn main:app --reload --port 7000
 ```
 python main.py
 ```
+```
+uvicorn main:app --port 7000 --workers 2
+```
 - Swagger API
 ```
 localhost:7000/docs
