@@ -13,7 +13,7 @@ import numpy as np
 import os
 
 important_finding = focusing_finding[1:]
-BASE_DIR = os.path.dirname(__file__)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 threshold_df = pd.read_json(f'{BASE_DIR}\\threshold.json')
 threshold_dict = threshold_df['G-Mean'].to_dict()

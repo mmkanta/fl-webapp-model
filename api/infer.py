@@ -16,7 +16,7 @@ async def remove_file(path):
 
 @router.post("", status_code=200)
 async def index(model_name: str = Form(...), file: UploadFile = File(...), background_tasks: BackgroundTasks = BackgroundTasks()):
-    BASE_DIR = os.path.dirname(os.path.dirname(__file__))
+    BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     
     path = os.path.join(BASE_DIR, "resources\\temp", file.filename.split('.')[0])
     file_directory = path
