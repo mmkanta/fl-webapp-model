@@ -6,3 +6,5 @@ openshift==0.12.1
 Pillow==8.4.0
 pydicom==2.2.2
 uvicorn==0.15.0
+wheel==0.37.0
+pandas==1.2.4
