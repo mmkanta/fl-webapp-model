@@ -161,7 +161,7 @@ def overlay_cam(img, cam, weight=0.5, img_max=255.):
     x = x / x.max()
     return x
 
-def main(file_location, content_type):
+async def main(file_location, content_type):
     checkpoint = os.path.join(BASE_DIR, 'pylon_densenet169_ImageNet_1024_selectRad_V2.onnx')
 
     size=1024
@@ -188,6 +188,7 @@ def main(file_location, content_type):
         scale = 1024/image_load.shape[0]
         image_load = cv2.resize(image_load, (0,0), fx=scale, fy=scale)
 
+    print('save images')
     for i_class in important_finding:
         cam = overlay_cam(np.array(image_load), seg[0, class_dict[i_class]])
 

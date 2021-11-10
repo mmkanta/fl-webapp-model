@@ -9,13 +9,13 @@ import json
 
 router = APIRouter()
 
-def remove_file(path):
+async def remove_file(path):
     if os.path.exists(path):
         shutil.rmtree(path)
         print('end')
 
 @router.post("", status_code=200)
-def index(model_name: str = Form(...), file: UploadFile = File(...), background_tasks: BackgroundTasks = BackgroundTasks()):
+async def index(model_name: str = Form(...), file: UploadFile = File(...), background_tasks: BackgroundTasks = BackgroundTasks()):
     BASE_DIR = os.path.dirname(os.path.dirname(__file__))
     
     path = os.path.join(BASE_DIR, "resources\\temp", file.filename.split('.')[0])
@@ -36,13 +36,14 @@ def index(model_name: str = Form(...), file: UploadFile = File(...), background_
             file_object.write(file.file.read())
         if model_name == "classification_pylon_1024":
             print('start')
-            result = pylon_predict(file_location, file.content_type)
+            result = await pylon_predict(file_location, file.content_type)
             with open(os.path.join(file_directory, 'result', 'prediction.txt'), 'w') as f:
                 json.dump(result, f)
             shutil.make_archive(os.path.join(file_directory, file.filename.split('.')[0]),
                                 'zip',
                                 root_dir=os.path.join(file_directory, 'result'),
                                 )
+            print('finish')
             return FileResponse(os.path.join(file_directory, file.filename.split('.')[0] + '.zip'), status_code=200)
         else:
             return JSONResponse(content={"success": False, "message": "Model not found"}, status_code=400)
