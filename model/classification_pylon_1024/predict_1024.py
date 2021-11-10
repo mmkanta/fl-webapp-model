@@ -15,7 +15,8 @@ import os
 important_finding = focusing_finding[1:]
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-threshold_df = pd.read_json(f'{BASE_DIR}\\threshold.json', orient=str)
+threshold_df = pd.read_json(f'{BASE_DIR}\\threshold.json', orient='split')
+print(threshold_df)
 threshold_dict = threshold_df['G-Mean'].to_dict()
 CATEGORIES = list(threshold_dict.keys())
 class_dict = {cls:i for i, cls in enumerate(CATEGORIES)}
