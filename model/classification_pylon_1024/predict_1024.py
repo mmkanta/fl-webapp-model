@@ -15,11 +15,6 @@ import os
 important_finding = focusing_finding[1:]
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-if os.path.exists(f'{BASE_DIR}\\threshold.json'):
-    print(f'{BASE_DIR}\\threshold.json', True)
-else:
-    print(BASE_DIR)
-
 threshold_df = pd.DataFrame({
    "G-Mean":{
       "No Finding":0.3985043764,
