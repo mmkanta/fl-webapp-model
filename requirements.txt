@@ -8,3 +8,4 @@ pydicom==2.2.2
 uvicorn==0.15.0
 wheel==0.37.0
 pandas==1.2.4
+python-multipart==0.0.5
