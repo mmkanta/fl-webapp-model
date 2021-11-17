@@ -2,6 +2,7 @@ from starlette.responses import JSONResponse, FileResponse
 from starlette.background import BackgroundTasks
 from fastapi import APIRouter, Form, File, UploadFile
 from model.classification_pylon_1024.predict_1024 import main as pylon_predict
+from model.covid19_admission.predict_admission import main as covid_predict
 import shutil
 
 import os
@@ -26,19 +27,36 @@ async def index(model_name: str = Form(...), file: UploadFile = File(...), backg
         file_directory = path + str(count)
         count = count + 1
         
+    # create new directory with filename in /resources/temp/
     os.makedirs(file_directory)
 
     file_location = os.path.join(file_directory, file.filename)
 
+    # remove the directory
     background_tasks.add_task(remove_file, file_directory)
     try:
+        # write uploaded file in file_location
         with open(file_location, "wb") as file_object:
             file_object.write(file.file.read())
         if model_name == "classification_pylon_1024":
             print('start')
             result = await pylon_predict(file_location, file.content_type)
+            # get result (dict) into text file
             with open(os.path.join(file_directory, 'result', 'prediction.txt'), 'w') as f:
                 json.dump(result, f)
+            # make zip file of result directory
+            shutil.make_archive(os.path.join(file_directory, file.filename.split('.')[0]),
+                                'zip',
+                                root_dir=os.path.join(file_directory, 'result'),
+                                )
+            print('finish')
+            return FileResponse(os.path.join(file_directory, file.filename.split('.')[0] + '.zip'), status_code=200)
+        elif model_name == "covid19_admission":
+            print('start')
+            result = await covid_predict(file_location, file.content_type)
+            with open(os.path.join(file_directory, 'result', 'prediction.txt'), 'w') as f:
+                json.dump(result, f)
+            # make zip file of result directory
             shutil.make_archive(os.path.join(file_directory, file.filename.split('.')[0]),
                                 'zip',
                                 root_dir=os.path.join(file_directory, 'result'),
