@@ -1,4 +1,4 @@
-from model.classification_pylon_1024.predict_1024 import *
+from model.classification_pylon.predict import *
 
 async def main(file_location, content_type):
     
