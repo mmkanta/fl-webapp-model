@@ -1,7 +1,7 @@
 from starlette.responses import JSONResponse, FileResponse
 from starlette.background import BackgroundTasks
 from fastapi import APIRouter, Form, File, UploadFile
-from model.classification_pylon_1024.predict_1024 import main as pylon_predict
+from model.classification_pylon.predict import main as pylon_predict
 from model.covid19_admission.predict_admission import main as covid_predict
 import shutil
 
@@ -38,9 +38,14 @@ async def index(model_name: str = Form(...), file: UploadFile = File(...), backg
         # write uploaded file in file_location
         with open(file_location, "wb") as file_object:
             file_object.write(file.file.read())
-        if model_name == "classification_pylon_1024":
+        if "classification_pylon" in model_name:
             print('start')
-            result = await pylon_predict(file_location, file.content_type)
+            if model_name == "classification_pylon_1024":
+                result = await pylon_predict(file_location, file.content_type, '1024')
+            elif model_name == "classification_pylon_256":
+                result = await pylon_predict(file_location, file.content_type, '256')
+            else:
+                return JSONResponse(content={"success": False, "message": "Model not found"}, status_code=400)
             # get result (dict) into text file
             with open(os.path.join(file_directory, 'result', 'prediction.txt'), 'w') as f:
                 json.dump(result, f)
