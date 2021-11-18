@@ -18,3 +18,11 @@ uvicorn main:app --port 7000 --workers 2
 ```
 localhost:7000/docs
 ```
+- Docker (port 7000)
+```
+docker build . -t capstone
+```
+```
+docker run -d --name capstone -p 7000:8000 capstone
+```
+
