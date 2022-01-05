@@ -23,6 +23,6 @@ localhost:7000/docs
 docker build . -t capstone
 ```
 ```
-docker run -d --name capstone -p 7000:8000 capstone
+docker run -d --name capstone -p 7000:7000 capstone
 ```
 
