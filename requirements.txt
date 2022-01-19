@@ -9,8 +9,20 @@ uvicorn==0.15.0
 wheel==0.37.0
 pandas==1.2.4
 python-multipart==0.0.5
-pylibjpeg==1.3.0
-pylibjpeg-libjpeg==1.2.0
-pylibjpeg-openjpeg==1.1.1
-pylibjpeg-rle==1.1.0
+# pylibjpeg==1.3.0
+# pylibjpeg-libjpeg==1.2.0
+# pylibjpeg-openjpeg==1.1.1
+# pylibjpeg-rle==1.1.0
 pynetdicom==2.0.1
+
+opencv-python-headless
+# streamlit
+watchdog
+# fastapi
+# uvicorn 
+aiofiles
+python-gdcm
+scipy
+imageio
+matplotlib
+# GPUtil

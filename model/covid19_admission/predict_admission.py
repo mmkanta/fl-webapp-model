@@ -1,9 +1,13 @@
-from model.classification_pylon.predict import *
+import os
+import json
 
-async def main(file_location, content_type):
+def main(file_dir):
     
-    path = os.path.join(os.path.dirname(file_location), 'result')
-    if not os.path.exists(path):
-        os.makedirs(path)
+    res_dir = os.path.join(os.path.dirname(file_dir), 'result')
+    if not os.path.exists(res_dir):
+        os.makedirs(res_dir)
 
-    return [{"Admission": 0.08201}]
+    with open(os.path.join(res_dir, 'prediction.txt'), 'w') as f:
+        json.dump([{"Admission": 0.08201}], f)
+
+    return True
