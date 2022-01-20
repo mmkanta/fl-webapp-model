@@ -13,3 +13,5 @@ resources/log/*
 !resources/log/dummy.txt
 
 .idea/
+
+.DS_Store
