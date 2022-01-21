@@ -336,3 +336,104 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
+
+# def plot_bbox_from_df(df_bbox, image_path):
+#     image_path = os.path.join(PACS_DIR, image_path)
+#     ### df_bbox คือ json ที่ได้มาจาก database
+#     ### image_path คือ path ของ image
+
+#     import cv2
+#     import pydicom
+#     import numpy as np
+#     import pandas as pd
+
+#     all_bbox = pd.DataFrame(df_bbox['data'], columns=['label', 'tool', 'data'])
+
+#     font = cv2.FONT_HERSHEY_SIMPLEX
+#     fontScale = 1.5
+#     thickness = 6
+#     isClosed = True
+#     # Green color
+#     color = (0, 255, 0)
+
+#     ### ส่วนที่เรียก image
+#     #import dicom image array
+#     if image_path != None:
+#         event = load_file(image_path)
+
+#         dicom = event.dataset
+#         dicom.file_meta = event.file_meta
+
+#         # dicom = pydicom.dcmread(image_path)
+#         inputImage = dicom.pixel_array
+
+#         # depending on this value, X-ray may look inverted - fix that:
+#         if dicom.PhotometricInterpretation == "MONOCHROME1":
+#             inputImage = np.amax(inputImage) - inputImage
+#             inputImage = np.stack([inputImage, inputImage, inputImage])
+#             inputImage = inputImage.astype('float32')
+#             inputImage = inputImage - inputImage.min()
+#             inputImage = inputImage / inputImage.max()
+#             inputImage = inputImage.transpose(1, 2, 0)
+#             inputImage = (inputImage*255).astype(int)
+#             # https://github.com/opencv/opencv/issues/14866
+#             inputImage = cv2.UMat(inputImage).get()
+#     else:
+#         inputImage = np.zeros([3000, 3000, 3])
+#         inputImage = inputImage.astype(int)
+#         inputImage = cv2.UMat(inputImage).get()
+
+#     for index, row in all_bbox.iterrows():
+
+#         if row['tool'] == 'rectangleRoi':
+#             pts = row["data"]["handles"]
+#             inputImage = cv2.rectangle(inputImage, (int(pts["start"]["x"]), int(pts["start"]["y"])), (int(
+#                 pts["end"]["x"]), int(pts["end"]["y"])), color, thickness)
+#             inputImage = cv2.putText(inputImage,  row["label"], (int(min(pts["start"]["x"], pts["end"]["x"])), int(
+#                 min(pts["start"]["y"], pts["end"]["y"]))), font, fontScale, color, thickness, cv2.LINE_AA)
+
+#         if row['tool'] == 'freehand':
+#             pts = np.array([[cdn["x"], cdn["y"]]
+#                            for cdn in row["data"]["handles"]], np.int32)
+#             pts = pts.reshape((-1, 1, 2))
+#             #choose min x,y for text origin
+#             text_org = np.amin(pts, axis=0)
+#             inputImage = cv2.polylines(inputImage, [pts], isClosed, color, thickness)
+#             inputImage = cv2.putText(inputImage,  row["label"], tuple(
+#                 text_org[0]), font, fontScale, color, thickness, cv2.LINE_AA)
+
+#         if row['tool'] == 'length':
+#             pts = row["data"]["handles"]
+#             #choose left point for text origin
+#             text_org = "start"
+#             if pts["start"]["x"] > pts["end"]["x"]:
+#                 text_org = "end"
+#             inputImage = cv2.line(inputImage, (int(pts["start"]["x"]), int(pts["start"]["y"])), (int(
+#                 pts["end"]["x"]), int(pts["end"]["y"])), color, thickness)
+#             inputImage = cv2.putText(inputImage,  row["label"], (int(pts[text_org]["x"]), int(
+#                 pts[text_org]["y"])), font, fontScale, color, thickness, cv2.LINE_AA)
+
+#         if row['tool'] == 'ratio':
+#             pts = row["data"]["0"]["handles"]
+#             #choose left point for text origin
+#             text_org = "start"
+#             if pts["start"]["x"] > pts["end"]["x"]:
+#                 text_org = "end"
+#             inputImage = cv2.line(inputImage, (int(pts["start"]["x"]), int(pts["start"]["y"])), (int(
+#                 pts["end"]["x"]), int(pts["end"]["y"])), color, thickness)
+#             inputImage = cv2.putText(inputImage,  row["label"], (int(pts[text_org]["x"]), int(
+#                 pts[text_org]["y"])), font, fontScale, color, thickness, cv2.LINE_AA)
+#             pts = row["data"]["1"]["handles"]
+#             #choose left point for text origin
+#             text_org = "start"
+#             if pts["start"]["x"] > pts["end"]["x"]:
+#                 text_org = "end"
+#             inputImage = cv2.line(inputImage, (int(pts["start"]["x"]), int(pts["start"]["y"])), (int(
+#                 pts["end"]["x"]), int(pts["end"]["y"])), color, thickness)
+#             inputImage = cv2.putText(inputImage,  row["label"], (int(pts[text_org]["x"]), int(
+#                 pts[text_org]["y"])), font, fontScale, color, thickness, cv2.LINE_AA)
+
+#         #cv2.imshow(inputImage)
+#         cv2.imwrite(os.path.join(PACS_DIR, "save.png"), inputImage)
+#     return inputImage

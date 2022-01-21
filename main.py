@@ -42,7 +42,7 @@ app.include_router(
 app.include_router(
     local.router,
     prefix="/api/local",
-    tags=["PACS"],
+    tags=["LOCAL"],
     responses={404: {"success": False, "message": "Not found"}},
 )
 
