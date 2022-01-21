@@ -315,8 +315,8 @@ def main(ds, file_dir, model_name):
     try:
         checkpoint = ""
         model_size = '1024'
-        if model_name == "classification_pylon_256":
-            model_size = '256'
+        # if model_name == "classification_pylon_256":
+        #     model_size = '256'
 
         if model_size == '1024':
             checkpoint = os.path.join(BASE_DIR, 'pylon_densenet169_ImageNet_1024_selectRad_V2.onnx')
@@ -361,7 +361,7 @@ def main(ds, file_dir, model_name):
         with open(os.path.join(res_dir, 'prediction.txt'), 'w') as f:
             json.dump(all_pred_df, f)
         
-        return True
+        return True, ""
     except Exception as e:
         print(traceback.format_exc())
-        return False
+        return False, e

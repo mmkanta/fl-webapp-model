@@ -30,10 +30,13 @@ names = ['Linnet Campo', 'Marika McNiven', 'Thera Sharp']
 #     print(ds.ProcedureCodeSequence)
 #     print(ds.file_meta.MediaStorageSOPInstanceUID)
 
-# ds = pydicom.dcmread(os.path.join(BASE_DIR, 'resources', 'files', '0041018.dcm'))
-# ds.AccessionNumber = '20210908CR0035'
-# ds.save_as(os.path.join(BASE_DIR, 'resources', 'files', '0041018.dcm'), write_like_original=False)
+# ds = pydicom.dcmread(os.path.join(BASE_DIR, 'resources', 'local', '0041018.dcm'))
+# ds.AccessionNumber = '0041018'
+# ds.PatientID = '4149'
+# ds.PatientName = 'Serina^Harford'
+# ds.save_as(os.path.join(BASE_DIR, 'resources', 'local', '0041018.dcm'), write_like_original=False)
 
+# ds = pydicom.dcmread(os.path.join(BASE_DIR, 'resources', 'local', '0041018.dcm'))
 # print(ds.AccessionNumber)
 # print(ds.PatientID)
 # print(ds.PatientName)
@@ -128,3 +131,4 @@ print(pd.to_datetime(ds.StudyDate, infer_datetime_format=True))
 print(datetime.datetime.fromtimestamp(float(ds.StudyTime)))
 # ds.save_as(os.path.join(BASE_DIR, 'resources', 'files', 'save_test.dcm'))
 print(event.assoc.requestor.ae_title)
+print(ds)
