@@ -26,3 +26,7 @@ scipy
 imageio
 matplotlib
 # GPUtil
+
+pymongo
+jwt
+cryptography

@@ -10,4 +10,4 @@ def main(file_dir):
     with open(os.path.join(res_dir, 'prediction.txt'), 'w') as f:
         json.dump([{"Admission": 0.08201}], f)
 
-    return True
+    return True, ""

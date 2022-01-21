@@ -12,4 +12,7 @@ resources/files/*
 resources/log/*
 !resources/log/dummy.txt
 
+resources/local/*
+!resources/local/0041018.dcm
+
 .idea/
