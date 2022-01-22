@@ -18,10 +18,10 @@ print(BASE_DIR)
 i = 0
 names = ['Linnet Campo', 'Marika McNiven', 'Thera Sharp']
 
-# for file in os.listdir(os.path.join(BASE_DIR, 'resources', 'files')):
+# for file in os.listdir(os.path.join(BASE_DIR, 'resources', 'local')):
 #     filename = os.fsdecode(file)
 #     print(filename)
-#     ds = pydicom.dcmread(os.path.join(BASE_DIR, 'resources', 'files', filename))
+#     ds = pydicom.dcmread(os.path.join(BASE_DIR, 'resources', 'local', filename))
 #     print(ds.AccessionNumber)
 #     print(ds.PatientID)
 #     print(ds.PatientName)

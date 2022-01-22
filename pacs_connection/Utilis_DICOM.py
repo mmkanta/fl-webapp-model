@@ -14,7 +14,7 @@ from pathlib import Path
 
 from datetime import datetime
 
-from Constant import AI_VERSION
+from pacs_connection.Constant import AI_VERSION
 
 def extract_dcm_info(ds):
     """
@@ -364,3 +364,17 @@ def array_to_dicom(ds, dir, filename):
     print(ds_modify)
     
     return ds_modify, dcm_compressed_add
+
+def check_dicom_exist(acc_no):
+    BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    LOCAL_DIR = os.path.join(BASE_DIR, 'resources', 'local')
+
+    acc_no = str(acc_no)
+    for file in os.listdir(LOCAL_DIR):
+        if file.endswith('.dcm'):
+            ds = pydicom.dcmread(os.path.join(LOCAL_DIR, file))
+            if ds.AccessionNumber == acc_no:
+                filename = os.fsdecode(file)
+                return True, filename
+    else:
+        return False, ""
