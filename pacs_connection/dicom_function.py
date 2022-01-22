@@ -58,6 +58,9 @@ def get_all(hn):
                     data['Modality'] = ds.Modality
                     data['Patient ID'] = ds.PatientID
                     data['Patient Name'] = ds.PatientName.given_name + " " + ds.PatientName.family_name
+                    data['Patient Sex'] = ds.PatientSex
+                    if 'PatientAge' in ds:
+                        data['Age'] = ds.PatientAge
                     try:
                         data['Procedure Code'] = ds[0x020,0x0010].value
                     except:
@@ -287,24 +290,25 @@ def infer_local(acc_no, model_name):
         file_dir = os.path.join(TEMP_DIR, "local_{}_{}".format(model_name, acc_no))
         if not os.path.exists(file_dir):
             os.makedirs(file_dir)
-        if os.path.exists(os.path.join(LOCAL_DIR, acc_no + '.dcm')):
-            ds = pydicom.dcmread(os.path.join(LOCAL_DIR, acc_no + '.dcm'))
+        for file in os.listdir(LOCAL_DIR):
+            if file.endswith('.dcm'):
+                ds = pydicom.dcmread(os.path.join(LOCAL_DIR, file))
+                if ds.AccessionNumber == acc_no:
+                    message = "Error occurred"
+                    result = False
+                    if "classification_pylon" in model_name:
+                        result, message = pylon_predict(ds, file_dir, model_name)
+                    # elif model_name == "covid19_admission":
+                    #     result = covid_predict(file_dir)
+                    else:
+                        message = "Model not found"
 
-            message = "Error occurred"
-            result = False
-            if "classification_pylon" in model_name:
-                result, message = pylon_predict(ds, file_dir, model_name)
-            # elif model_name == "covid19_admission":
-            #     result = covid_predict(file_dir)
-            else:
-                message = "Model not found"
-
-            if result:
-                with open(os.path.join(file_dir, "success.txt"), 'w') as f:
-                    f.write('infer successfully')
-            else:
-                with open(os.path.join(file_dir, "fail.txt"), 'w') as f:
-                    f.write(message)
+                    if result:
+                        with open(os.path.join(file_dir, "success.txt"), 'w') as f:
+                            f.write('infer successfully')
+                    else:
+                        with open(os.path.join(file_dir, "fail.txt"), 'w') as f:
+                            f.write(message)
         else:
             with open(os.path.join(file_dir, "fail.txt"), 'w') as f:
                 f.write('Cannot find dicom file')

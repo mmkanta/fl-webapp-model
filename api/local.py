@@ -1,6 +1,7 @@
 from starlette.responses import JSONResponse, FileResponse
 from starlette.background import BackgroundTasks
 from fastapi import APIRouter, Form, File, UploadFile, Body
+from pacs_connection.Utilis_DICOM import check_dicom_exist
 import shutil
 import subprocess
 import traceback
@@ -53,12 +54,12 @@ async def get_info_by_hn(hn: str):
 @router.get("/acc_no/{acc_no}", status_code=200)
 async def get_dicom_file(acc_no: str):
     try:
-        file_location = os.path.join(LOCAL_DIR, "{}.dcm".format(acc_no))
-
-        if os.path.exists(os.path.join(file_location)):
-            return FileResponse(file_location)
-        else:
+        exist, filename = check_dicom_exist(acc_no)
+        if not exist:
             return JSONResponse(content={"success": False, "message": "Cannot find dicom file"}, status_code=400)
+        file_location = os.path.join(LOCAL_DIR, filename)
+
+        return FileResponse(file_location)
     except Exception as e:
         print(traceback.format_exc())
         return JSONResponse(content={"success": False, "message": "Internal server error"}, status_code=500)
@@ -83,6 +84,7 @@ async def infer(model_name: str, acc_no: str, background_tasks: BackgroundTasks 
             message = "error"
             with open(os.path.join(file_dir, 'fail.txt'), "r") as f:
                 message = f.readline()
+                print(message)
             return JSONResponse(content={"success": False, "message": message}, status_code=500)
     except Exception as e:
         print(traceback.format_exc())
