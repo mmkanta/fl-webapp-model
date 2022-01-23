@@ -69,14 +69,24 @@ def extract_ds_info(ds):
     return data
 
 # dicom function called by /api
-def get_all(hn):
+def get_all(hn, acc_no, start_date, end_date):
     try:
+        if hn == "None": hn = None
+        if acc_no == "None": acc_no = None
+        if start_date == "None": start_date = None
+        if end_date == "None": end_date = None
         all_data = []
         for file in os.listdir(PACS_DIR):
             if file.endswith('.evt'):
                 event = load_file(os.path.join(PACS_DIR, file))
                 ds = event.dataset
-                if ds.PatientID == hn:
+                if (not hn) and (not acc_no) and (not start_date) and (not end_date):
+                    data = extract_ds_info(ds)
+                    all_data.append(data)
+                elif ((not hn) or (hn and (hn in ds.PatientID))) \
+                    and ((not acc_no) or (acc_no and (acc_no in ds.AccessionNumber))) \
+                    and ((not start_date) or (start_date and (pd.to_datetime(ds.StudyDate, infer_datetime_format=True) >= datetime.fromtimestamp(int(start_date)/1000)))) \
+                    and ((not end_date) or (end_date and (pd.to_datetime(ds.StudyDate, infer_datetime_format=True) <= datetime.fromtimestamp(int(end_date)/1000)))):
                     data = extract_ds_info(ds)
                     all_data.append(data)
         if all_data != []:
@@ -332,7 +342,7 @@ def main() -> None:
     if func == "get_info":
         get_info(hn)
     elif func == "get_all":
-        get_all(hn)
+        get_all(hn, acc_no, start_date, end_date)
     elif func == "get_dicom":
         get_dicom(acc_no)
     elif func == "infer":
