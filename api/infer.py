@@ -1,16 +1,16 @@
 from starlette.responses import JSONResponse, FileResponse
 from starlette.background import BackgroundTasks
-from fastapi import APIRouter, Form, File, UploadFile
-from model.classification_pylon.predict import main as pylon_predict
-from model.covid19_admission.predict_admission import main as covid_predict
+from fastapi import APIRouter #, Form, File, UploadFile
+# from model.classification_pylon.predict import main as pylon_predict
+# from model.covid19_admission.predict_admission import main as covid_predict
 import shutil
 import subprocess
 import time
 import traceback
 
 import os
-import json
-print(os.path.abspath(__file__))
+# import json
+
 router = APIRouter()
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

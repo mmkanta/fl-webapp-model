@@ -22,7 +22,7 @@ watchdog
 # uvicorn 
 aiofiles
 python-gdcm
-scipy
+# scipy
 imageio
 matplotlib
 # GPUtil

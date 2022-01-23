@@ -1,9 +1,6 @@
 import os
 import pydicom
 import pickle
-import threading
-import subprocess
-import traceback
 import time
 import pandas as pd
 import datetime, time
@@ -19,6 +16,7 @@ i = 0
 names = ['Linnet Campo', 'Marika McNiven', 'Thera Sharp']
 
 # for file in os.listdir(os.path.join(BASE_DIR, 'resources', 'local')):
+#     i = i + 1
 #     filename = os.fsdecode(file)
 #     print(filename)
 #     ds = pydicom.dcmread(os.path.join(BASE_DIR, 'resources', 'local', filename))
@@ -26,18 +24,18 @@ names = ['Linnet Campo', 'Marika McNiven', 'Thera Sharp']
 #     print(ds.PatientID)
 #     print(ds.PatientName)
 #     print(ds.Modality)
-#     print(ds.StudyDate)
 #     print(ds.ProcedureCodeSequence)
+#     print(pd.to_datetime(ds.StudyDate, infer_datetime_format=True))
 #     print(ds.file_meta.MediaStorageSOPInstanceUID)
 
-# ds = pydicom.dcmread(os.path.join(BASE_DIR, 'resources', 'local', '0041018.dcm'))
+ds = pydicom.dcmread(os.path.join(BASE_DIR, 'resources', 'local', '0041099.dcm'))
 # ds.AccessionNumber = '0041018'
-# ds.PatientID = '4149'
+ds.PatientID = '8789'
 # ds.PatientName = 'Serina^Harford'
-# ds.save_as(os.path.join(BASE_DIR, 'resources', 'local', '0041018.dcm'), write_like_original=False)
+ds.save_as(os.path.join(BASE_DIR, 'resources', 'local', '0041099.dcm'), write_like_original=False)
 
-# ds = pydicom.dcmread(os.path.join(BASE_DIR, 'resources', 'local', '0041018.dcm'))
-# print(ds.AccessionNumber)
+ds = pydicom.dcmread(os.path.join(BASE_DIR, 'resources', 'local', '0041018.dcm'))
+print(ds.StudyDate)
 # print(ds.PatientID)
 # print(ds.PatientName)
 # print(ds.Modality)
@@ -98,7 +96,7 @@ save_file(fake_event, os.path.join(BASE_DIR, 'resources', 'files', '20211018CR08
 
 # for backup in os.listdir(os.path.join(BASE_DIR, 'resources', 'files')):
 #     if backup.endswith('.evt'):
-event = read_event(os.path.join(BASE_DIR, 'resources', 'files', '20211018CR0846_2.evt'))
+event = read_event(os.path.join(BASE_DIR, 'resources', 'files', '20211018CR0846.evt'))
 ds = event.dataset
 ds.file_meta = event.file_meta
 if isinstance(ds, (pydicom.FileDataset, pydicom.dataset.Dataset)):
@@ -127,8 +125,10 @@ print(ds.PatientName.family_name + " " + ds.PatientName.given_name)
 print(ds.PatientSex)
 print(ds.PatientAge)
 print(ds.PatientBirthDate)
+print(ds.StudyDate)
 print(pd.to_datetime(ds.StudyDate, infer_datetime_format=True))
+# print(pd.to_datetime(1642926950790))
 print(datetime.datetime.fromtimestamp(float(ds.StudyTime)))
 # ds.save_as(os.path.join(BASE_DIR, 'resources', 'files', 'save_test.dcm'))
 print(event.assoc.requestor.ae_title)
-print(ds)
+# print(ds)
