@@ -1,11 +1,14 @@
 from starlette.responses import JSONResponse, FileResponse
 from starlette.background import BackgroundTasks
-from fastapi import APIRouter, Form, File, UploadFile, Body
+from fastapi import APIRouter #, Form, File, UploadFile, Body
 from pacs_connection.Utilis_DICOM import check_dicom_exist
 import shutil
 import subprocess
 import traceback
 import time
+from typing import Optional
+import datetime
+from dateutil import parser
 
 import os, sys
 import json
@@ -21,10 +24,19 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LOCAL_DIR = os.path.join(BASE_DIR, 'resources', 'local')
 TEMP_DIR = os.path.join(BASE_DIR, 'resources', 'temp')
 
-@router.get("/HN/{hn}", status_code=200)
-async def get_all_by_hn(hn: str):
+@router.get("/HN/", status_code=200)
+async def get_all(hn: Optional[str] = None, acc_no: Optional[str] = None, start_date: Optional[str] = None, end_date: Optional[str] = None):
     try: 
-        subprocess.run(["python", os.path.join(BASE_DIR, "pacs_connection", "dicom_function.py"), "-n", hn, "-f", "get_all_local"])
+        if hn == None: hn = "None"
+        if acc_no == None: acc_no = "None"
+        if start_date == None: start_date = "None"
+        if end_date == None: end_date = "None"
+        # print(datetime.datetime.fromtimestamp(int(start_date)/1000))
+        subprocess.run([
+            "python", 
+            os.path.join(BASE_DIR, "pacs_connection", "dicom_function.py"), 
+            "-n", hn, "-f", "get_all_local", "-a", acc_no, "-s", start_date, "-e", end_date
+        ])
         if os.path.exists(os.path.join(TEMP_DIR, "local_dicom_files_{}.json".format(hn))):
             with open(os.path.join(TEMP_DIR, "local_dicom_files_{}.json".format(hn)), "r") as f:
                 data = json.load(f)
