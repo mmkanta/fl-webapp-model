@@ -131,16 +131,19 @@ async def save_to_pacs(authorization: Optional[str] = Header(None), bbox_data: s
 
         os.remove(os.path.join(bbox_heatmap_dir, file.filename))
 
+        extract_bbox_heatmap_dir = os.path.join(bbox_heatmap_dir, "heatmap")
+        os.rename(os.path.join(bbox_heatmap_dir, file.filename.split('.')[0]), extract_bbox_heatmap_dir)  
+
         # dict to string
         subprocess.run(["python", os.path.join(BASE_DIR, "pacs_connection", "dicom_function.py"), "-f", "save_to_pacs", "-a", acc_no, "-b", bbox_data])
 
-        if os.path.exists(os.path.join(bbox_heatmap_dir, "fail.txt")):
+        if os.path.exists(os.path.join(extract_bbox_heatmap_dir, "fail.txt")):
             message = "error"
-            with open(os.path.join(bbox_heatmap_dir, "fail.txt"), "r") as f:
+            with open(os.path.join(extract_bbox_heatmap_dir, "fail.txt"), "r") as f:
                 message = f.readline()
             return JSONResponse(content={"success": False, "message": message}, status_code=500)
 
-        if os.path.exists(os.path.join(bbox_heatmap_dir, "success.txt")):
+        if os.path.exists(os.path.join(extract_bbox_heatmap_dir, "success.txt")):
             return JSONResponse(content={"success": True, "message": "Save DICOM to PACS successfully"}, status_code=200)
 
         return JSONResponse(content={"success": False, "message": "Cannot find dicom file"}, status_code=200)

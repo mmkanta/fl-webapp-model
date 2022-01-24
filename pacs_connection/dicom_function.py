@@ -41,6 +41,9 @@ parser.add_argument('-e', '--end_date', type=str, default="", help="End Date")
 
 args = parser.parse_args()
 
+addr = "192.1.10.200" #"192.1.10.162" #   "13.229.184.70" # 127.0.0.1
+port = 104 # 104 # 11114 # 11112
+
 def load_file(file_path):
     with open(file_path, 'rb') as f:
         data = pickle.load(f)
@@ -173,7 +176,7 @@ def infer(acc_no, model_name):
 def save_to_pacs(acc_no, bbox):
     # bbox string to dict
     bbox_dict = json.loads(bbox)
-    bbox_heatmap_dir = os.path.join(BASE_DIR, 'resources', 'temp', acc_no + '_store')
+    bbox_heatmap_dir = os.path.join(BASE_DIR, 'resources', 'temp', acc_no + '_store', 'heatmap')
     event = load_file(os.path.join(PACS_DIR, acc_no + '.evt'))
 
     ds = event.dataset
@@ -196,9 +199,8 @@ def save_to_pacs(acc_no, bbox):
         # SCU Role
         start_time = time.time()
         ae_title_scp = "SYNAPSEDICOM" #"AE_TITLE_NRT02" #   "MY_ECHO_SCP_AWS" # 
-        addr = "192.1.10.200" #"192.1.10.162" #   "13.229.184.70" #
-        port = 104 # 104 # 11114 #
-        command = f"python SCU.py -a {ae_title_scp} -s {addr} -p {port} -f {dcm_compressed_path}"
+        SCU_path = os.path.join(BASE_DIR, "pacs_connection", "SCU.py")
+        command = f"python {SCU_path} -a {ae_title_scp} -s {addr} -p {port} -f {dcm_compressed_path}"
         subprocess.run(command.split())
 
         
@@ -207,11 +209,11 @@ def save_to_pacs(acc_no, bbox):
 
     plot_bbox_from_df(bbox_dict, ds, os.path.join(bbox_heatmap_dir, 'rendered_bbox_image.png'))
     ds_modify, dcm_compressed_path = array_to_dicom(ds, bbox_heatmap_dir, 'rendered_bbox_image.png')
+
+    # SCU Role
     start_time = time.time()
     ae_title_scp = "SYNAPSEDICOM" #"AE_TITLE_NRT02" #   "MY_ECHO_SCP_AWS" # 
-    addr = "192.1.10.200" #"192.1.10.162" #   "13.229.184.70" #
-    port = 104 # 104 # 11114 #
-    command = f"python SCU.py -a {ae_title_scp} -s {addr} -p {port} -f {dcm_compressed_path}"
+    command = f"python {SCU_path} -a {ae_title_scp} -s {addr} -p {port} -f {dcm_compressed_path}"
     subprocess.run(command.split())
 
     print(f'Send {Accession_Number} Modified DICOM "rendered_bbox_image" with execution time: {time.time() - start_time :.2f} seconds')

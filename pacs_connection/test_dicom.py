@@ -28,13 +28,13 @@ names = ['Linnet Campo', 'Marika McNiven', 'Thera Sharp']
 #     print(pd.to_datetime(ds.StudyDate, infer_datetime_format=True))
 #     print(ds.file_meta.MediaStorageSOPInstanceUID)
 
-ds = pydicom.dcmread(os.path.join(BASE_DIR, 'resources', 'local', '0041099.dcm'))
+ds = pydicom.dcmread(os.path.join(BASE_DIR, 'resources', 'local', '0043443.dcm'))
 # ds.AccessionNumber = '0041018'
-ds.PatientID = '8789'
+# ds.PatientID = '8789'
 # ds.PatientName = 'Serina^Harford'
-ds.save_as(os.path.join(BASE_DIR, 'resources', 'local', '0041099.dcm'), write_like_original=False)
+# ds.save_as(os.path.join(BASE_DIR, 'resources', 'local', '0041099.dcm'), write_like_original=False)
 
-ds = pydicom.dcmread(os.path.join(BASE_DIR, 'resources', 'local', '0041018.dcm'))
+# ds = pydicom.dcmread(os.path.join(BASE_DIR, 'resources', 'local', '0041018.dcm'))
 print(ds.StudyDate)
 # print(ds.PatientID)
 # print(ds.PatientName)

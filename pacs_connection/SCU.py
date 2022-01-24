@@ -118,7 +118,7 @@ def SCU(path_dcm, addr, port, ae_title_scp = b'ANY-SCP'):
         if status:
             # If the storage request succeeded this will be 0x0000
             print('C-STORE request status: 0x{0:04x} with #{1} try'.format(status.Status, n_try))
-            with open('log/Log_Accession_Number.txt', 'a') as f:
+            with open(os.path.join(BASE_DIR, 'resources', 'log', 'Log_Accession_Number.txt'), 'a') as f:
                 f.write(str(ds.AccessionNumber) + '\n')
         else:
             print('Connection timed out, was aborted or received invalid response')

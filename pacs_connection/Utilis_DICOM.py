@@ -14,8 +14,8 @@ from pathlib import Path
 
 from datetime import datetime
 
-# from pacs_connection.Constant import AI_VERSION
-from Constant import AI_VERSION
+from pacs_connection.Constant import AI_VERSION
+# from Constant import AI_VERSION
 
 def extract_dcm_info(ds):
     """
@@ -420,14 +420,15 @@ def plot_bbox_from_df(df_bbox, dicom, image_path):
         # depending on this value, X-ray may look inverted - fix that:
         if dicom.PhotometricInterpretation == "MONOCHROME1":
             inputImage = np.amax(inputImage) - inputImage
-            inputImage = np.stack([inputImage, inputImage, inputImage])
-            inputImage = inputImage.astype('float32')
-            inputImage = inputImage - inputImage.min()
-            inputImage = inputImage / inputImage.max()
-            inputImage = inputImage.transpose(1, 2, 0)
-            inputImage = (inputImage*255).astype(int)
-            # https://github.com/opencv/opencv/issues/14866
-            inputImage = cv2.UMat(inputImage).get()
+            
+        inputImage = np.stack([inputImage, inputImage, inputImage])
+        inputImage = inputImage.astype('float32')
+        inputImage = inputImage - inputImage.min()
+        inputImage = inputImage / inputImage.max()
+        inputImage = inputImage.transpose(1, 2, 0)
+        inputImage = (inputImage*255).astype(int)
+        # https://github.com/opencv/opencv/issues/14866
+        inputImage = cv2.UMat(inputImage).get()
     else:
         inputImage = np.zeros([3000, 3000, 3])
         inputImage = inputImage.astype(int)
