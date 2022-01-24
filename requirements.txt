@@ -18,8 +18,6 @@ pynetdicom==2.0.1
 opencv-python-headless
 # streamlit
 watchdog
-# fastapi
-# uvicorn 
 aiofiles
 python-gdcm
 # scipy

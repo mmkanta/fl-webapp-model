@@ -14,7 +14,7 @@ LOCAL_DIR = os.path.join(BASE_DIR, 'resources', 'local')
 sys.path.append(BASE_DIR)
 
 from evt_classes import *
-from Utilis_DICOM import array_to_dicom
+from Utilis_DICOM import array_to_dicom, plot_bbox_from_df
 from pathlib import Path
 import time
 import shutil
@@ -184,7 +184,7 @@ def save_to_pacs(acc_no, bbox):
     for file in os.listdir(bbox_heatmap_dir):
         filename = os.fsdecode(file)
         finding = filename.split('.')[0]
-        ds_modify, dcm_compressed_path = array_to_dicom(ds, os.path.join(bbox_heatmap_dir), filename)
+        ds_modify, dcm_compressed_path = array_to_dicom(ds, bbox_heatmap_dir, filename)
         if dcm_compressed_path is None:
             print('Cannot convert image {finding} to dicom')
             with open(os.path.join(bbox_heatmap_dir, "fail.txt"), 'w') as f:
@@ -205,19 +205,17 @@ def save_to_pacs(acc_no, bbox):
         print(f'Send {Accession_Number} Modified DICOM "{finding}" with execution time: {time.time() - start_time :.2f} seconds')
         print('  {finding} Done  '.center(100,'='))
 
-    for k, val in bbox_dict['classes'].items():
-        # bbox to dicom
-        
-        # SCU Role
-        start_time = time.time()
-        ae_title_scp = "SYNAPSEDICOM" #"AE_TITLE_NRT02" #   "MY_ECHO_SCP_AWS" # 
-        addr = "192.1.10.200" #"192.1.10.162" #   "13.229.184.70" #
-        port = 104 # 104 # 11114 #
-        command = f"python SCU.py -a {ae_title_scp} -s {addr} -p {port} -f {dcm_compressed_path}"
-        subprocess.run(command.split())
+    plot_bbox_from_df(bbox_dict, ds, os.path.join(bbox_heatmap_dir, 'rendered_bbox_image.png'))
+    ds_modify, dcm_compressed_path = array_to_dicom(ds, bbox_heatmap_dir, 'rendered_bbox_image.png')
+    start_time = time.time()
+    ae_title_scp = "SYNAPSEDICOM" #"AE_TITLE_NRT02" #   "MY_ECHO_SCP_AWS" # 
+    addr = "192.1.10.200" #"192.1.10.162" #   "13.229.184.70" #
+    port = 104 # 104 # 11114 #
+    command = f"python SCU.py -a {ae_title_scp} -s {addr} -p {port} -f {dcm_compressed_path}"
+    subprocess.run(command.split())
 
-        print(f'Send {Accession_Number} Modified DICOM "{k}" with execution time: {time.time() - start_time :.2f} seconds')
-        print('  {k} Done  '.center(100,'='))
+    print(f'Send {Accession_Number} Modified DICOM "rendered_bbox_image" with execution time: {time.time() - start_time :.2f} seconds')
+    print('  {k} Done  '.center(100,'='))
 
     # # Load log_send_c_store single record to disk
     # folder_path = f'{BASE_DIR}/resources/log'

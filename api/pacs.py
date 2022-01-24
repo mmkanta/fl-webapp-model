@@ -106,44 +106,44 @@ async def get_dicom_file(acc_no: str, background_tasks: BackgroundTasks = Backgr
         print(traceback.format_exc())
         return JSONResponse(content={"success": False, "message": "Internal server error"}, status_code=500)
 
-# @router.post("/save", status_code=200)
-# async def save_to_pacs(authorization: Optional[str] = Header(None), bbox_data: str = Form(...), file: UploadFile = File(...), background_tasks: BackgroundTasks = BackgroundTasks()):
-#     try:
-#         bbox_dict = json.loads(bbox_data)
-#         success, message = validate_authorization(authorization, bbox_dict["result_id"])
-#         if not success:
-#             return JSONResponse(content={"success": False, "message": message}, status_code=400)
+@router.post("/save", status_code=200)
+async def save_to_pacs(authorization: Optional[str] = Header(None), bbox_data: str = Form(...), file: UploadFile = File(...), background_tasks: BackgroundTasks = BackgroundTasks()):
+    try:
+        bbox_dict = json.loads(bbox_data)
+        success, message = validate_authorization(authorization, bbox_dict["result_id"])
+        if not success:
+            return JSONResponse(content={"success": False, "message": message}, status_code=400)
 
-#         acc_no = bbox_dict["acc_no"]
+        acc_no = bbox_dict["acc_no"]
 
-#         bbox_heatmap_dir = os.path.join(BASE_DIR, "resources", "temp", acc_no + "_store")
-#         if not os.path.exists(bbox_heatmap_dir):
-#             os.makedirs(bbox_heatmap_dir)
+        bbox_heatmap_dir = os.path.join(BASE_DIR, "resources", "temp", acc_no + "_store")
+        if not os.path.exists(bbox_heatmap_dir):
+            os.makedirs(bbox_heatmap_dir)
 
-#         background_tasks.add_task(remove_file, bbox_heatmap_dir)
+        background_tasks.add_task(remove_file, bbox_heatmap_dir)
 
-#         # png file
-#         with open(os.path.join(bbox_heatmap_dir, file.filename), "wb") as f:
-#             f.write(file.file.read())
+        # png file
+        with open(os.path.join(bbox_heatmap_dir, file.filename), "wb") as f:
+            f.write(file.file.read())
 
-#         with ZipFile(os.path.join(bbox_heatmap_dir, file.filename), 'r') as zip:
-#             zip.extractall(path=bbox_heatmap_dir)
+        with ZipFile(os.path.join(bbox_heatmap_dir, file.filename), 'r') as zip:
+            zip.extractall(path=bbox_heatmap_dir)
 
-#         os.remove(os.path.join(bbox_heatmap_dir, file.filename))
+        os.remove(os.path.join(bbox_heatmap_dir, file.filename))
 
-#         # dict to string
-#         subprocess.run(["python", os.path.join(BASE_DIR, "pacs_connection", "dicom_function.py"), "-f", "save_to_pacs", "-a", acc_no, "-b", bbox_data])
+        # dict to string
+        subprocess.run(["python", os.path.join(BASE_DIR, "pacs_connection", "dicom_function.py"), "-f", "save_to_pacs", "-a", acc_no, "-b", bbox_data])
 
-#         if os.path.exists(os.path.join(bbox_heatmap_dir, "fail.txt")):
-#             message = "error"
-#             with open(os.path.join(bbox_heatmap_dir, "fail.txt"), "r") as f:
-#                 message = f.readline()
-#             return JSONResponse(content={"success": False, "message": message}, status_code=500)
+        if os.path.exists(os.path.join(bbox_heatmap_dir, "fail.txt")):
+            message = "error"
+            with open(os.path.join(bbox_heatmap_dir, "fail.txt"), "r") as f:
+                message = f.readline()
+            return JSONResponse(content={"success": False, "message": message}, status_code=500)
 
-#         if os.path.exists(os.path.join(bbox_heatmap_dir, "success.txt")):
-#             return JSONResponse(content={"success": True, "message": "Save DICOM to PACS successfully"}, status_code=200)
+        if os.path.exists(os.path.join(bbox_heatmap_dir, "success.txt")):
+            return JSONResponse(content={"success": True, "message": "Save DICOM to PACS successfully"}, status_code=200)
 
-#         return JSONResponse(content={"success": False, "message": "Cannot find dicom file"}, status_code=200)
-#     except Exception as e:
-#         print(traceback.format_exc())
-#         return JSONResponse(content={"success": False, "message": "Internal server error"}, status_code=500)
+        return JSONResponse(content={"success": False, "message": "Cannot find dicom file"}, status_code=200)
+    except Exception as e:
+        print(traceback.format_exc())
+        return JSONResponse(content={"success": False, "message": "Internal server error"}, status_code=500)

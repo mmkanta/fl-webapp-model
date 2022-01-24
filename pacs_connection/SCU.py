@@ -3,8 +3,7 @@ from pydicom import dcmread
 from pydicom.uid import ImplicitVRLittleEndian
 
 from pynetdicom import AE, VerificationPresentationContexts, StoragePresentationContexts
-# from pynetdicom.sop_class import CTImageStorage, MRImageStorage, XRayRadiationDoseSRStorage
-from pynetdicom.sop_class import DigitalXRayImagePresentationStorage
+from pynetdicom.sop_class import DigitalXRayImageStorageForPresentation
 
 from pydicom.uid import JPEG2000Lossless, JPEGLosslessSV1
 from pynetdicom import AE, StoragePresentationContexts, DEFAULT_TRANSFER_SYNTAXES
@@ -60,7 +59,7 @@ def SCU(path_dcm, addr, port, ae_title_scp = b'ANY-SCP'):
     # https://pydicom.github.io/pynetdicom/stable/reference/generated/pynetdicom.ae.ApplicationEntity.html#pynetdicom.ae.ApplicationEntity.associate
     ae = AE(ae_title=b'PYNETDICOM')
     transfer_syntaxes = [JPEGLosslessSV1] # ['1.2.840.10008.1.2.4.70'] # JPEG Lossless, Non-Hierarchical, First-Order Prediction (Process 14 [Selection Value 1])
-    ae.add_requested_context(DigitalXRayImagePresentationStorage, transfer_syntax= transfer_syntaxes) # Digital X-Ray Image Storage - For Presentation
+    ae.add_requested_context(DigitalXRayImageStorageForPresentation, transfer_syntax= transfer_syntaxes) # Digital X-Ray Image Storage - For Presentation
     assoc = ae.associate(addr, port, ae_title = ae_title_scp)
 
     # Define path of log_send_c_store from today and yesterday 
@@ -119,7 +118,7 @@ def SCU(path_dcm, addr, port, ae_title_scp = b'ANY-SCP'):
         if status:
             # If the storage request succeeded this will be 0x0000
             print('C-STORE request status: 0x{0:04x} with #{1} try'.format(status.Status, n_try))
-            with open('database/Log_Accession_Number.txt', 'a') as f:
+            with open('log/Log_Accession_Number.txt', 'a') as f:
                 f.write(str(ds.AccessionNumber) + '\n')
         else:
             print('Connection timed out, was aborted or received invalid response')
