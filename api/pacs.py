@@ -1,43 +1,39 @@
 from starlette.responses import JSONResponse, FileResponse
 from starlette.background import BackgroundTasks
-from fastapi import APIRouter, Form, File, UploadFile, Body, Request, Header
+from fastapi import APIRouter #, Form, File, UploadFile, Body, Request, Header
 from typing import Optional
 import shutil
 import subprocess
 import traceback
 import time
-import jwt
-import pymongo
-from bson.objectid import ObjectId
+# import jwt
+# import pymongo
+# from bson.objectid import ObjectId
 import json
-from zipfile import ZipFile
+# from zipfile import ZipFile
 
 import os, sys
 import json
 
 router = APIRouter()
 
-SECRET = "oUQF9vv5MB77302BJm6HDKulKKPqfukuiW5zMeamAx2JJU21cJkx23MBShP3GVt"
-CONNECTION_STRING = "mongodb://localhost/webapp"
-# CONNECTION_STRING = "mongodb://admin:admin@mongo:27017/webapp?authSource=webapp&w=1"
-
-def validate_authorization(authorization, result_id):
-    token = ""
-    try:
-        token = authorization.split(" ")[1]
-        jwt.decode(token, SECRET, algorithms=["HS256"])
-    except:
-        return False, "Token is invalid"
-    try:
-        db = pymongo.MongoClient(CONNECTION_STRING)["webapp"]
-        user = db["users"].find_one({"token": token})
-        result = db["pred_results"].find_one({"_id": ObjectId(result_id)})
-        project = db["projects"].find_one({"_id": result["project_id"]})
-        if user["_id"] in project["head"]:
-            return True, ""
-        return False, ""
-    except:
-        return False, "User is unauthorized or cannot connect to database"
+# def validate_authorization(authorization, result_id):
+#     token = ""
+#     try:
+#         token = authorization.split(" ")[1]
+#         jwt.decode(token, SECRET, algorithms=["HS256"])
+#     except:
+#         return False, "Token is invalid"
+#     try:
+#         db = pymongo.MongoClient(CONNECTION_STRING)["webapp"]
+#         user = db["users"].find_one({"token": token})
+#         result = db["pred_results"].find_one({"_id": ObjectId(result_id)})
+#         project = db["projects"].find_one({"_id": result["project_id"]})
+#         if user["_id"] in project["head"]:
+#             return True, ""
+#         return False, ""
+#     except:
+#         return False, "User is unauthorized or cannot connect to database"
 
 def remove_file(path):
     if os.path.exists(path):
