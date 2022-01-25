@@ -28,14 +28,14 @@ names = ['Linnet Campo', 'Marika McNiven', 'Thera Sharp']
 #     print(pd.to_datetime(ds.StudyDate, infer_datetime_format=True))
 #     print(ds.file_meta.MediaStorageSOPInstanceUID)
 
-ds = pydicom.dcmread(os.path.join(BASE_DIR, 'resources', 'local', '0041099.dcm'))
+# ds = pydicom.dcmread(os.path.join(BASE_DIR, 'resources', 'local', '0043443.dcm'))
 # ds.AccessionNumber = '0041018'
-ds.PatientID = '8789'
+# ds.PatientID = '8789'
 # ds.PatientName = 'Serina^Harford'
-ds.save_as(os.path.join(BASE_DIR, 'resources', 'local', '0041099.dcm'), write_like_original=False)
+# ds.save_as(os.path.join(BASE_DIR, 'resources', 'local', '0041099.dcm'), write_like_original=False)
 
-ds = pydicom.dcmread(os.path.join(BASE_DIR, 'resources', 'local', '0041018.dcm'))
-print(ds.StudyDate)
+# ds = pydicom.dcmread(os.path.join(BASE_DIR, 'resources', 'local', '0041018.dcm'))
+# print(ds.StudyDate)
 # print(ds.PatientID)
 # print(ds.PatientName)
 # print(ds.Modality)
@@ -85,18 +85,18 @@ def save_file(file, save_path):
 
 # dicom = pydicom.read_file(os.path.join(BASE_DIR, 'resources', 'files', '0041018.dcm'))
 
-event = read_event(os.path.join(BASE_DIR, 'resources', 'files', '20211018CR0846.evt'))
-# event.file_meta = dicom.file_meta
-event.dataset.PatientID = '1234570'
-event.dataset.PatientSex = 'F'
-event.dataset.PatientAge = '30'
-event.dataset.PatientName = 'Serina^Harford'
-fake_event = FakeEvent(event)
-save_file(fake_event, os.path.join(BASE_DIR, 'resources', 'files', '20211018CR0846_2.evt'))
+# event = read_event(os.path.join(BASE_DIR, 'resources', 'files', '20211018CR0846.evt'))
+# # event.file_meta = dicom.file_meta
+# event.dataset.PatientID = '1234570'
+# event.dataset.PatientSex = 'F'
+# event.dataset.PatientAge = '30'
+# event.dataset.PatientName = 'Serina^Harford'
+# fake_event = FakeEvent(event)
+# save_file(fake_event, os.path.join(BASE_DIR, 'resources', 'files', '20211018CR0846_2.evt'))
 
 # for backup in os.listdir(os.path.join(BASE_DIR, 'resources', 'files')):
 #     if backup.endswith('.evt'):
-event = read_event(os.path.join(BASE_DIR, 'resources', 'files', '20211018CR0846.evt'))
+event = read_event(os.path.join(BASE_DIR, 'resources', 'files', '20190930CR0530.evt'))
 ds = event.dataset
 ds.file_meta = event.file_meta
 if isinstance(ds, (pydicom.FileDataset, pydicom.dataset.Dataset)):

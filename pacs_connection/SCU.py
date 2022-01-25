@@ -3,8 +3,7 @@ from pydicom import dcmread
 from pydicom.uid import ImplicitVRLittleEndian
 
 from pynetdicom import AE, VerificationPresentationContexts, StoragePresentationContexts
-# from pynetdicom.sop_class import CTImageStorage, MRImageStorage, XRayRadiationDoseSRStorage
-from pynetdicom.sop_class import DigitalXRayImagePresentationStorage
+from pynetdicom.sop_class import DigitalXRayImageStorageForPresentation
 
 from pydicom.uid import JPEG2000Lossless, JPEGLosslessSV1
 from pynetdicom import AE, StoragePresentationContexts, DEFAULT_TRANSFER_SYNTAXES
@@ -27,12 +26,14 @@ parser.add_argument('-f', '--file', type=str, help="dicom file path")
 parser.add_argument('-a', '--ae_title_scp', type=str, default='', help="AE Title SCP")
 parser.add_argument('-s', '--host', type=str, default='', help="host name")
 parser.add_argument('-p', '--port', type=int, default=11112, help="destination port number")
+parser.add_argument('-t', '--finding_type', type=str, default="", help="image type")
 
 args = parser.parse_args()
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-def SCU(path_dcm, addr, port, ae_title_scp = b'ANY-SCP'):
+def SCU(path_dcm, addr, port, finding_type, ae_title_scp = b'ANY-SCP'):
+
     # Date time
     date_time = datetime.now()
     year = date_time.year
@@ -57,10 +58,12 @@ def SCU(path_dcm, addr, port, ae_title_scp = b'ANY-SCP'):
     metadata_dict["Study Time"] = ds.StudyTime
     metadata_dict["Sending_Time"] = str(date_time)
 
+    bbox_heatmap_dir = os.path.join(BASE_DIR, 'resources', 'temp', ds.AccessionNumber + '_store')
+
     # https://pydicom.github.io/pynetdicom/stable/reference/generated/pynetdicom.ae.ApplicationEntity.html#pynetdicom.ae.ApplicationEntity.associate
     ae = AE(ae_title=b'PYNETDICOM')
     transfer_syntaxes = [JPEGLosslessSV1] # ['1.2.840.10008.1.2.4.70'] # JPEG Lossless, Non-Hierarchical, First-Order Prediction (Process 14 [Selection Value 1])
-    ae.add_requested_context(DigitalXRayImagePresentationStorage, transfer_syntax= transfer_syntaxes) # Digital X-Ray Image Storage - For Presentation
+    ae.add_requested_context(DigitalXRayImageStorageForPresentation, transfer_syntax= transfer_syntaxes) # Digital X-Ray Image Storage - For Presentation
     assoc = ae.associate(addr, port, ae_title = ae_title_scp)
 
     # Define path of log_send_c_store from today and yesterday 
@@ -119,9 +122,13 @@ def SCU(path_dcm, addr, port, ae_title_scp = b'ANY-SCP'):
         if status:
             # If the storage request succeeded this will be 0x0000
             print('C-STORE request status: 0x{0:04x} with #{1} try'.format(status.Status, n_try))
-            with open('database/Log_Accession_Number.txt', 'a') as f:
-                f.write(str(ds.AccessionNumber) + '\n')
+            with open(os.path.join(bbox_heatmap_dir, "success.txt"), 'w') as f:
+                f.write('Save to PACS successfully')
+            with open(os.path.join(BASE_DIR, 'resources', 'log', 'Log_Accession_Number.txt'), 'a') as f:
+                f.write(str(ds.AccessionNumber) + ' ' + finding_type + '\n')
         else:
+            with open(os.path.join(bbox_heatmap_dir, "fail.txt"), 'w') as f:
+                f.write(f'[Error] Connection timed out ({finding_type})')
             print('Connection timed out, was aborted or received invalid response')
         
         print(status)
@@ -136,12 +143,15 @@ def SCU(path_dcm, addr, port, ae_title_scp = b'ANY-SCP'):
         # print("status.Status", status.Status) # 0
         # print('status format', f'0x{0:04x}'.format(status.Status)) # 0x0000
     else:
+        with open(os.path.join(bbox_heatmap_dir, "fail.txt"), 'w') as f:
+            f.write(f'[Error] Failed to associate ({finding_type})')
         # Association rejected, aborted or never connected
         print('Failed to associate')
         # print('Association rejected, aborted or never connected')
         metadata_dict["Status"] = "Failed to associate"
 
     metadata_dict["n_try"] = n_try
+    metadata_dict["Finding"] = finding_type
     # Store log file to csv
     metadata_df = pd.DataFrame.from_records([metadata_dict])
     
@@ -164,7 +174,8 @@ def main() -> None:
     ae_title_scp = args.ae_title_scp
     host = args.host
     port = args.port
-    SCU(path_dcm, host, port, ae_title_scp = ae_title_scp)
+    finding_type = args.finding_type
+    SCU(path_dcm, host, port, finding_type, ae_title_scp = ae_title_scp)
 
 if __name__ == "__main__":
     main()
