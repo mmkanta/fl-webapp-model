@@ -88,13 +88,14 @@ async def index(model_name: str, acc_no: str, background_tasks: BackgroundTasks 
     # remove the directory
     background_tasks.add_task(remove_file, file_dir)
     try:
+        start_time = time.time()
         subprocess.run(["python", os.path.join(BASE_DIR, "pacs_connection", "dicom_function.py"), "-f", "infer", "-a", acc_no, "-m", model_name])
         if os.path.exists(os.path.join(file_dir, 'success.txt')):
             shutil.make_archive(os.path.join(file_dir, acc_no),
                                 'zip',
                                 root_dir=os.path.join(file_dir, 'result'),
                                 )
-            print("Inference end")
+            print(f"Inference end time: {time.time() - start_time :.2f} seconds")
             return FileResponse(os.path.join(file_dir, acc_no + '.zip'), status_code=200)
         elif os.path.exists(os.path.join(file_dir, 'fail.txt')):
             message = "error"
@@ -103,4 +104,5 @@ async def index(model_name: str, acc_no: str, background_tasks: BackgroundTasks 
             return JSONResponse(content={"success": False, "message": message}, status_code=500)
     except Exception as e:
         print(traceback.format_exc())
+        print(e)
         return JSONResponse(content={"success": False, "message": "Internal server error"}, status_code=500)

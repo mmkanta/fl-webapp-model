@@ -1,1 +1,0 @@
-AI_VERSION = "UTC_MDCU_Rad_v1.0.2.6"

@@ -26,5 +26,5 @@ matplotlib
 # GPUtil
 
 cryptography
-jwt
+PyJWT
 pymongo
