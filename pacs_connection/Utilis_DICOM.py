@@ -6,7 +6,6 @@ import os, sys
 # import matplotlib.pylab as plt
 # from tqdm.notebook import tqdm
 # from time import time
-
 from PIL import Image
 from pydicom.pixel_data_handlers.util import apply_voi_lut
 from imageio import imwrite
@@ -14,7 +13,8 @@ from pathlib import Path
 
 from datetime import datetime
 
-from Constant import AI_VERSION
+# from Constant import AI_VERSION
+AI_VERSION = "UTC_MDCU_Rad_v1.0.2.6"
 
 def extract_dcm_info(ds):
     """

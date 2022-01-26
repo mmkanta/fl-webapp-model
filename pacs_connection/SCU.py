@@ -70,6 +70,7 @@ def SCU(path_dcm, addr, port, finding_type, ae_title_scp = b'ANY-SCP'):
     folder_path = f'{BASE_DIR}/resources/log/log_send_c_store/{year}/{month}'
     Path(folder_path).mkdir(parents=True, exist_ok=True)
     path_store_log_send_c_store_today = os.path.join(folder_path, str(date)+'.csv' )
+
     folder_path = f'{BASE_DIR}/resources/log/log_send_c_store/{yesterday.year}/{yesterday.month}'
     Path(folder_path).mkdir(parents=True, exist_ok=True)
     path_store_log_send_c_store_yesterday = os.path.join(folder_path, str(yesterday)+'.csv' )
@@ -77,15 +78,15 @@ def SCU(path_dcm, addr, port, finding_type, ae_title_scp = b'ANY-SCP'):
     # with open('database/Log_Accession_Number.txt', 'r') as f:
     #     log_acc_num = f.read().split('\n')
 
-    # Check whether this accession number was already sent. If yes, change SOPInstanceUID Back to previous value.
-    try:
+    # Check whether this accession number (and this finding) was already sent. If yes, change SOPInstanceUID Back to previous value.
+    try: # append yesterday and today's csv file
         df_log_send_c_store = pd.read_csv(path_store_log_send_c_store_yesterday,error_bad_lines=False).append(pd.read_csv(path_store_log_send_c_store_today,error_bad_lines=False)).reset_index(drop=True)
     except:
         print('Cannot read path_store_log_send_c_store_yesterday or path_store_log_send_c_store_today')
         df_log_send_c_store = pd.DataFrame()
 
-    if 'Accession Number' in df_log_send_c_store.columns:
-        target_acc_num = df_log_send_c_store.loc[df_log_send_c_store['Accession Number'] == ds.AccessionNumber]
+    if 'Accession Number' in df_log_send_c_store.columns and finding_type in df_log_send_c_store.columns:
+        target_acc_num = df_log_send_c_store.loc[df_log_send_c_store['Accession Number'] == ds.AccessionNumber & df_log_send_c_store['Finding'] == finding_type]
     else:
         target_acc_num = []
     if len(target_acc_num) > 0:

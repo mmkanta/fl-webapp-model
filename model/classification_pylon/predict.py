@@ -278,8 +278,8 @@ def main(ds, file_dir, model_name):
 
         if model_size == '1024':
             checkpoint = os.path.join(BASE_DIR, 'pylon_densenet169_ImageNet_1024_selectRad_V2.onnx')
-        elif model_size == '256':
-            checkpoint = os.path.join(BASE_DIR, 'pylon_densenet169_ImageNet_256_selectRad_V2.onnx')
+        # elif model_size == '256':
+        #     checkpoint = os.path.join(BASE_DIR, 'pylon_densenet169_ImageNet_256_selectRad_V2.onnx')
 
         net_predict = onnxruntime.InferenceSession(checkpoint)
         image_load = ''

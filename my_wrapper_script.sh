@@ -3,13 +3,14 @@
 # turn on bash's job control
 set -m
 
-
+# uvicorn main:app --host 0.0.0.0 --port 7000 --workers 3 &
+uvicorn main:app --host 0.0.0.0 --port 7000 --reload &
 # Start the primary process and put it in the background
 # python create_initial_file.py &&
 # sleep 2 &&
 while true; do
     [ -e stopme ] && break && sleep 2
-    python start_scp_server.py
+    python ./pacs_connection/start_scp_server.py
 done
 
 # python start_scp_server.py &
