@@ -215,21 +215,20 @@ def save_to_pacs(acc_no, bbox):
                 
                 print(f'Send {Accession_Number} Modified DICOM "{finding}" with execution time: {time.time() - start_time :.2f} seconds')
                 print(f'  {finding} Done  '.center(100,'='))
+                
+        if isinstance(bbox_dict['data'], list) and len(bbox_dict['data']) > 0:
+            # save rendered image to PACS
+            plot_bbox_from_df(bbox_dict, ds, os.path.join(bbox_heatmap_dir, 'rendered_bbox_image.png'))
+            ds_modify, dcm_compressed_path = array_to_dicom(ds, bbox_heatmap_dir, 'rendered_bbox_image.png')
 
-        # save rendered image to PACS
-        plot_bbox_from_df(bbox_dict, ds, os.path.join(bbox_heatmap_dir, 'rendered_bbox_image.png'))
-        ds_modify, dcm_compressed_path = array_to_dicom(ds, bbox_heatmap_dir, 'rendered_bbox_image.png')
+            # SCU Role
+            start_time = time.time()
+            finding_type = 'Rendered_bounding_box'
+            command = f"python {SCU_path} -a {AE_TITLE_SCP} -s {PACS_ADDR} -p {PACS_PORT} -f {dcm_compressed_path}  -t {finding_type}"
+            subprocess.run(command.split())
 
-        # SCU Role
-        start_time = time.time()
-        finding_type = 'Rendered_bounding_box'
-        command = f"python {SCU_path} -a {AE_TITLE_SCP} -s {PACS_ADDR} -p {PACS_PORT} -f {dcm_compressed_path}  -t {finding_type}"
-        subprocess.run(command.split())
-
-        print(f'Send {Accession_Number} Modified DICOM "Rendered_bbox_image" with execution time: {time.time() - start_time :.2f} seconds')
-        print('  Rendered Bounding Box Done  '.center(100,'='))
-
-
+            print(f'Send {Accession_Number} Modified DICOM "Rendered_bbox_image" with execution time: {time.time() - start_time :.2f} seconds')
+            print('  Rendered Bounding Box Done  '.center(100,'='))
 
         # deleting and clear the variable from memory in python
         del ds_modify
