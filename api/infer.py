@@ -16,7 +16,7 @@ router = APIRouter()
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TEMP_DIR = os.path.join(BASE_DIR, 'resources', 'temp')
 
-async def remove_file(path):
+def remove_file(path):
     if os.path.exists(path):
         shutil.rmtree(path)
         print('Finish clearing temporary file')
@@ -27,12 +27,13 @@ async def index(model_name: str, acc_no: str, background_tasks: BackgroundTasks 
 
     file_dir = os.path.join(TEMP_DIR, "{}_{}".format(model_name, acc_no))
 
-    # remove the directory
+    # remove directory after finish process
     background_tasks.add_task(remove_file, file_dir)
     
     try:
         start_time = time.time()
         subprocess.run(["python", os.path.join(BASE_DIR, "pacs_connection", "dicom_function.py"), "-f", "infer", "-a", acc_no, "-m", model_name])
+        
         if os.path.exists(os.path.join(file_dir, 'success.txt')):
             shutil.make_archive(os.path.join(file_dir, acc_no),
                                 'zip',
@@ -45,7 +46,8 @@ async def index(model_name: str, acc_no: str, background_tasks: BackgroundTasks 
             with open(os.path.join(file_dir, 'fail.txt'), "r") as f:
                 message = f.readline()
             return JSONResponse(content={"success": False, "message": message}, status_code=500)
+
     except Exception as e:
         print(traceback.format_exc())
-        print(e)
-        return JSONResponse(content={"success": False, "message": "Internal server error"}, status_code=500)
+        # print(e)
+        return JSONResponse(content={"success": False, "message": e}, status_code=500)

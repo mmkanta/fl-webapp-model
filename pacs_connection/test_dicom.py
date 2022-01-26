@@ -42,9 +42,6 @@ names = ['Linnet Campo', 'Marika McNiven', 'Thera Sharp']
 # print(ds.StudyDate)
 # print(ds.ProcedureCodeSequence)
 
-# 2561664
-# 20211018CR0846
-
 class FakeEvent:    
     def __init__(self, event):
         self.file_meta = event.file_meta

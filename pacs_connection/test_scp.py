@@ -13,4 +13,4 @@ handlers = [(evt.EVT_C_STORE, handle_store)]
 ae = AE()
 ae.add_supported_context(CTImageStorage, ExplicitVRLittleEndian)
 ae.add_supported_context(DigitalXRayImageStorageForPresentation, ALL_TRANSFER_SYNTAXES)
-ae.start_server(("127.0.0.1", 11112), block=True, evt_handlers=handlers)
+ae.start_server(("127.0.0.1", 11113), block=True, evt_handlers=handlers)

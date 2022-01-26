@@ -60,7 +60,6 @@ def load_file(file_path):
         data = pickle.load(f)
     return data
 
-
 def backup_event(
                 event,
                 backup_dir, 
@@ -170,7 +169,6 @@ def handle_store(event):
     start_time = time.time()
 
     # Backup event    
-    
     path_backup_event = backup_event(event, BACKUP_DIR)
 
     # Decode the C-STORE request's *Data Set* parameter to a pydicom Dataset
@@ -216,6 +214,7 @@ def handle_store(event):
     Path(log_dir).mkdir(parents=True, exist_ok=True)
     path_store_log_receive_dcm = os.path.join(log_dir, str(date)+'.csv' )
     print(f'Save meta_data file at: {path_store_log_receive_dcm}')
+    
     if not os.path.exists(path_store_log_receive_dcm):
         metadata_df.to_csv(path_store_log_receive_dcm, index=False)
     else:

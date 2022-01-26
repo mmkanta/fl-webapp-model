@@ -1,4 +1,6 @@
-import os, sys
+import os, sys, time
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 import traceback
 import numpy as np
 import pandas as pd
@@ -6,28 +8,23 @@ import pickle
 import subprocess
 import pydicom
 from datetime import datetime
+from pathlib import Path
+import shutil
+import gc
+import argparse
+import json
+from evt_classes import *
+from Utilis_DICOM import array_to_dicom, plot_bbox_from_df
+from Constant import PACS_ADDR, PACS_PORT, AE_TITLE_SCP
+from model.classification_pylon.predict import main as pylon_predict
+
+# from model.covid19_admission.predict_admission import main as covid_predict
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PACS_DIR = os.path.join(BASE_DIR, 'resources', 'files')
 TEMP_DIR = os.path.join(BASE_DIR, 'resources', 'temp')
 LOCAL_DIR = os.path.join(BASE_DIR, 'resources', 'local')
 sys.path.append(BASE_DIR)
-
-from evt_classes import *
-from Utilis_DICOM import array_to_dicom, plot_bbox_from_df
-from Constant import PACS_ADDR, PACS_PORT, AE_TITLE_SCP
-from pathlib import Path
-import time
-import shutil
-
-import gc
-
-import argparse
-
-import json
-
-from model.classification_pylon.predict import main as pylon_predict
-from model.covid19_admission.predict_admission import main as covid_predict
 
 # https://zetcode.com/python/argparse/
 parser = argparse.ArgumentParser()
@@ -42,11 +39,14 @@ parser.add_argument('-e', '--end_date', type=str, default="", help="End Date")
 
 args = parser.parse_args()
 
+# dicom function called by /api
+
 def load_file(file_path):
     with open(file_path, 'rb') as f:
         data = pickle.load(f)
     return data
 
+# extract dicom info for 'select cxr' page
 def extract_ds_info(ds):
     data = dict()
     data['Accession No'] = ds.AccessionNumber
@@ -69,7 +69,7 @@ def extract_ds_info(ds):
     # data['Proc Description'] = 'Chest PA upright'
     return data
 
-# dicom function called by /api
+# get all dicom's info by condition
 def get_all(hn, acc_no, start_date, end_date):
     try:
         if hn == "None": hn = None
@@ -95,8 +95,9 @@ def get_all(hn, acc_no, start_date, end_date):
                 json.dump(all_data, f)
     except Exception as e:
         print(traceback.format_exc())
-        print(e)
+        # print(e)
 
+# get patient's info
 def get_info(hn):
     try:
         all_data = {}
@@ -123,6 +124,7 @@ def get_info(hn):
         print(traceback.format_exc())
         print(e)
 
+# get dicom file
 def get_dicom(acc_no):
     try:
         acc_no = str(acc_no)
@@ -142,6 +144,7 @@ def get_dicom(acc_no):
         print(traceback.format_exc())
         print(e)
 
+# inference
 def infer(acc_no, model_name):
     try:
         acc_no = str(acc_no)
@@ -175,6 +178,7 @@ def infer(acc_no, model_name):
         print(traceback.format_exc())
         print(e)
 
+# save dicom to PACS
 def save_to_pacs(acc_no, bbox):
     try:
         # bbox string to dict
@@ -187,15 +191,16 @@ def save_to_pacs(acc_no, bbox):
 
         Accession_Number = ds.AccessionNumber
 
+        # save all heatmap images to PACS
         for file in os.listdir(bbox_heatmap_dir):
             if file.endswith('.png'):
                 filename = os.fsdecode(file)
                 finding = filename.split('.')[0]
                 ds_modify, dcm_compressed_path = array_to_dicom(ds, bbox_heatmap_dir, filename)
                 if dcm_compressed_path is None:
-                    print('Cannot convert image {finding} to dicom')
+                    print(f'Cannot convert image {finding} to dicom')
                     with open(os.path.join(bbox_heatmap_dir, "fail.txt"), 'w') as f:
-                        f.write('Cannot convert image {finding} to dicom')
+                        f.write(f'Cannot convert image {finding} to dicom')
                     return
 
                 # print(f'Receive DICOM and processing complete with execution time: {time.time() - start_time :.2f} seconds')  
@@ -209,8 +214,9 @@ def save_to_pacs(acc_no, bbox):
 
                 
                 print(f'Send {Accession_Number} Modified DICOM "{finding}" with execution time: {time.time() - start_time :.2f} seconds')
-                print('  {finding} Done  '.center(100,'='))
+                print(f'  {finding} Done  '.center(100,'='))
 
+        # save rendered image to PACS
         plot_bbox_from_df(bbox_dict, ds, os.path.join(bbox_heatmap_dir, 'rendered_bbox_image.png'))
         ds_modify, dcm_compressed_path = array_to_dicom(ds, bbox_heatmap_dir, 'rendered_bbox_image.png')
 
@@ -220,15 +226,13 @@ def save_to_pacs(acc_no, bbox):
         command = f"python {SCU_path} -a {AE_TITLE_SCP} -s {PACS_ADDR} -p {PACS_PORT} -f {dcm_compressed_path}  -t {finding_type}"
         subprocess.run(command.split())
 
-        print(f'Send {Accession_Number} Modified DICOM "rendered_bbox_image" with execution time: {time.time() - start_time :.2f} seconds')
+        print(f'Send {Accession_Number} Modified DICOM "Rendered_bbox_image" with execution time: {time.time() - start_time :.2f} seconds')
         print('  Rendered Bounding Box Done  '.center(100,'='))
 
 
 
         # deleting and clear the variable from memory in python
         del ds_modify
-        # Delete temp file
-
         del ds, event
 
         gc.collect()
