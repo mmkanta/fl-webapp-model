@@ -11,7 +11,7 @@ import gc
 
 from pydicom.uid import JPEGLosslessSV1
 from pynetdicom import AE, evt, StoragePresentationContexts, VerificationPresentationContexts, DEFAULT_TRANSFER_SYNTAXES, ALL_TRANSFER_SYNTAXES
-from pynetdicom.sop_class import DigitalXRayImagePresentationStorage, VerificationSOPClass, ComputedRadiographyImageStorage
+from pynetdicom.sop_class import ComputedRadiographyImageStorage, Verification, DigitalXRayImageStorageForPresentation
 from pynetdicom.pdu_primitives import SCP_SCU_RoleSelectionNegotiation
 
 import logging
@@ -33,7 +33,8 @@ args = parser.parse_args()
 
 ae = AE(ae_title=b'PYNETDICOM')
 
-SUPPORTED_ABSTRACT_SYNTAXES = [DigitalXRayImagePresentationStorage, ComputedRadiographyImageStorage, VerificationSOPClass]
+SUPPORTED_ABSTRACT_SYNTAXES = [DigitalXRayImageStorageForPresentation, ComputedRadiographyImageStorage, Verification]
+# SUPPORTED_ABSTRACT_SYNTAXES = [DigitalXRayImagePresentationStorage, ComputedRadiographyImageStorage, VerificationSOPClass]
 
 ae.supported_contexts = StoragePresentationContexts # All abstract syntax except Verification SOP Class
 ae.supported_contexts = VerificationPresentationContexts # Add Verification SOP Class ให้ SCU สามารถ echo มาได้
@@ -43,7 +44,7 @@ for abstract_syntax in SUPPORTED_ABSTRACT_SYNTAXES: # Adding additional transfer
     ae.add_supported_context(abstract_syntax, ALL_TRANSFER_SYNTAXES)
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-BACKUP_DIR = os.path.dirname(BASE_DIR, 'resources', 'backup')
+BACKUP_DIR = os.path.join(BASE_DIR, 'resources', 'backup')
             
 def current_dt():
     return datetime.now().isoformat()
@@ -58,7 +59,6 @@ def load_file(file_path):
     with open(file_path, 'rb') as f:
         data = pickle.load(f)
     return data
-
 
 def backup_event(
                 event,
@@ -169,7 +169,6 @@ def handle_store(event):
     start_time = time.time()
 
     # Backup event    
-    
     path_backup_event = backup_event(event, BACKUP_DIR)
 
     # Decode the C-STORE request's *Data Set* parameter to a pydicom Dataset
@@ -215,6 +214,7 @@ def handle_store(event):
     Path(log_dir).mkdir(parents=True, exist_ok=True)
     path_store_log_receive_dcm = os.path.join(log_dir, str(date)+'.csv' )
     print(f'Save meta_data file at: {path_store_log_receive_dcm}')
+    
     if not os.path.exists(path_store_log_receive_dcm):
         metadata_df.to_csv(path_store_log_receive_dcm, index=False)
     else:

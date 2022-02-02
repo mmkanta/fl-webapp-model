@@ -1,4 +1,6 @@
-import os, sys
+import os, sys, time
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 import traceback
 import numpy as np
 import pandas as pd
@@ -6,27 +8,23 @@ import pickle
 import subprocess
 import pydicom
 from datetime import datetime
+from pathlib import Path
+import shutil
+import gc
+import argparse
+import json
+from evt_classes import *
+from Utilis_DICOM import array_to_dicom, plot_bbox_from_df
+from Constant import PACS_ADDR, PACS_PORT, AE_TITLE_SCP
+from model.classification_pylon.predict import main as pylon_predict
+
+# from model.covid19_admission.predict_admission import main as covid_predict
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PACS_DIR = os.path.join(BASE_DIR, 'resources', 'files')
 TEMP_DIR = os.path.join(BASE_DIR, 'resources', 'temp')
 LOCAL_DIR = os.path.join(BASE_DIR, 'resources', 'local')
 sys.path.append(BASE_DIR)
-
-from evt_classes import *
-from Utilis_DICOM import array_to_dicom
-from pathlib import Path
-import time
-import shutil
-
-import gc
-
-import argparse
-
-import json
-
-from model.classification_pylon.predict import main as pylon_predict
-from model.covid19_admission.predict_admission import main as covid_predict
 
 # https://zetcode.com/python/argparse/
 parser = argparse.ArgumentParser()
@@ -41,11 +39,14 @@ parser.add_argument('-e', '--end_date', type=str, default="", help="End Date")
 
 args = parser.parse_args()
 
+# dicom function called by /api
+
 def load_file(file_path):
     with open(file_path, 'rb') as f:
         data = pickle.load(f)
     return data
 
+# extract dicom info for 'select cxr' page
 def extract_ds_info(ds):
     data = dict()
     data['Accession No'] = ds.AccessionNumber
@@ -68,7 +69,7 @@ def extract_ds_info(ds):
     # data['Proc Description'] = 'Chest PA upright'
     return data
 
-# dicom function called by /api
+# get all dicom's info by condition
 def get_all(hn, acc_no, start_date, end_date):
     try:
         if hn == "None": hn = None
@@ -94,7 +95,9 @@ def get_all(hn, acc_no, start_date, end_date):
                 json.dump(all_data, f)
     except Exception as e:
         print(traceback.format_exc())
+        # print(e)
 
+# get patient's info
 def get_info(hn):
     try:
         all_data = {}
@@ -119,7 +122,9 @@ def get_info(hn):
                     break
     except Exception as e:
         print(traceback.format_exc())
+        print(e)
 
+# get dicom file
 def get_dicom(acc_no):
     try:
         acc_no = str(acc_no)
@@ -137,7 +142,9 @@ def get_dicom(acc_no):
                 f.write('not found')
     except Exception as e:
         print(traceback.format_exc())
+        print(e)
 
+# inference
 def infer(acc_no, model_name):
     try:
         acc_no = str(acc_no)
@@ -169,83 +176,72 @@ def infer(acc_no, model_name):
                 f.write('Cannot find dicom file')
     except Exception as e:
         print(traceback.format_exc())
+        print(e)
 
+# save dicom to PACS
 def save_to_pacs(acc_no, bbox):
-    # bbox string to dict
-    bbox_dict = json.loads(bbox)
-    bbox_heatmap_dir = os.path.join(BASE_DIR, 'resources', 'temp', acc_no + '_store')
-    event = load_file(os.path.join(PACS_DIR, acc_no + '.evt'))
+    try:
+        # bbox string to dict
+        bbox_dict = json.loads(bbox)
+        bbox_heatmap_dir = os.path.join(BASE_DIR, 'resources', 'temp', acc_no + '_store')
+        event = load_file(os.path.join(PACS_DIR, acc_no + '.evt'))
 
-    ds = event.dataset
-    ds.file_meta = event.file_meta
+        ds = event.dataset
+        ds.file_meta = event.file_meta
 
-    Accession_Number = ds.AccessionNumber
+        Accession_Number = ds.AccessionNumber
 
-    for file in os.listdir(bbox_heatmap_dir):
-        filename = os.fsdecode(file)
-        finding = filename.split('.')[0]
-        ds_modify, dcm_compressed_path = array_to_dicom(ds, os.path.join(bbox_heatmap_dir), filename)
-        if dcm_compressed_path is None:
-            print('Cannot convert image {finding} to dicom')
-            with open(os.path.join(bbox_heatmap_dir, "fail.txt"), 'w') as f:
-                f.write('Cannot convert image {finding} to dicom')
-            return
+        # save all heatmap images to PACS
+        for file in os.listdir(bbox_heatmap_dir):
+            if file.endswith('.png'):
+                filename = os.fsdecode(file)
+                finding = filename.split('.')[0]
+                ds_modify, dcm_compressed_path = array_to_dicom(ds, bbox_heatmap_dir, filename)
+                if dcm_compressed_path is None:
+                    print(f'Cannot convert image {finding} to dicom')
+                    with open(os.path.join(bbox_heatmap_dir, "fail.txt"), 'w') as f:
+                        f.write(f'Cannot convert image {finding} to dicom')
+                    return
 
-        # print(f'Receive DICOM and processing complete with execution time: {time.time() - start_time :.2f} seconds')  
+                # print(f'Receive DICOM and processing complete with execution time: {time.time() - start_time :.2f} seconds')  
 
-        # SCU Role
-        start_time = time.time()
-        ae_title_scp = "SYNAPSEDICOM" #"AE_TITLE_NRT02" #   "MY_ECHO_SCP_AWS" # 
-        addr = "192.1.10.200" #"192.1.10.162" #   "13.229.184.70" #
-        port = 104 # 104 # 11114 #
-        command = f"python SCU.py -a {ae_title_scp} -s {addr} -p {port} -f {dcm_compressed_path}"
-        subprocess.run(command.split())
-
-        
-        print(f'Send {Accession_Number} Modified DICOM "{finding}" with execution time: {time.time() - start_time :.2f} seconds')
-        print('  {finding} Done  '.center(100,'='))
-
-    for k, val in bbox_dict['classes'].items():
-        # bbox to dicom
-        
-        # SCU Role
-        start_time = time.time()
-        ae_title_scp = "SYNAPSEDICOM" #"AE_TITLE_NRT02" #   "MY_ECHO_SCP_AWS" # 
-        addr = "192.1.10.200" #"192.1.10.162" #   "13.229.184.70" #
-        port = 104 # 104 # 11114 #
-        command = f"python SCU.py -a {ae_title_scp} -s {addr} -p {port} -f {dcm_compressed_path}"
-        subprocess.run(command.split())
-
-        print(f'Send {Accession_Number} Modified DICOM "{k}" with execution time: {time.time() - start_time :.2f} seconds')
-        print('  {k} Done  '.center(100,'='))
-
-    # # Load log_send_c_store single record to disk
-    # folder_path = f'{BASE_DIR}/resources/log'
-    # Path(folder_path).mkdir(parents=True, exist_ok=True)
-    # path_store_log_send_c_store_single  = os.path.join(folder_path, ds.AccessionNumber +'.csv' )
-    # metadata_df_SCU = pd.read_csv(path_store_log_send_c_store_single, error_bad_lines=False)
-
-    # # Concat log_receive_dcm with log_send_c_store then save to local
-    # folder_path = f'{BASE_DIR}/resources/log/log_send_c_store/{year}/{month}'
-    # Path(folder_path).mkdir(parents=True, exist_ok=True)
-    # path_store_log_concat = os.path.join(folder_path, str(date)+'.csv' )
-    # metadata_df_SCU = metadata_df_SCU.drop(['ID', 'Accession Number', 'Study Date','Study Time'], axis='columns')
-    # if not os.path.exists(path_store_log_concat):
-    #     metadata_df_concat.to_csv(path_store_log_concat, index=False)
-    # else:
-    #     metadata_df_concat.to_csv(path_store_log_concat, index=False, mode='a', header=False)
-
-
-    # deleting and clear the variable from memory in python
-    del ds_modify
-    # Delete temp file
-
-    del ds, event
-    gc.collect()
-    with open(os.path.join(bbox_heatmap_dir, "success.txt"), 'w') as f:
-        f.write('Save to PACS successfully')
+                # SCU Role
+                start_time = time.time()
     
-    print('  Done  '.center(100,'='))
+                SCU_path = os.path.join(BASE_DIR, "pacs_connection", "SCU.py")
+                command = f"python {SCU_path} -a {AE_TITLE_SCP} -s {PACS_ADDR} -p {PACS_PORT} -f {dcm_compressed_path} -t {finding}"
+                subprocess.run(command.split())
+
+                
+                print(f'Send {Accession_Number} Modified DICOM "{finding}" with execution time: {time.time() - start_time :.2f} seconds')
+                print(f'  {finding} Done  '.center(100,'='))
+                
+        if isinstance(bbox_dict['data'], list) and len(bbox_dict['data']) > 0:
+            # save rendered image to PACS
+            plot_bbox_from_df(bbox_dict, ds, os.path.join(bbox_heatmap_dir, 'rendered_bbox_image.png'))
+            ds_modify, dcm_compressed_path = array_to_dicom(ds, bbox_heatmap_dir, 'rendered_bbox_image.png')
+
+            # SCU Role
+            start_time = time.time()
+            finding_type = 'Rendered_bounding_box'
+            command = f"python {SCU_path} -a {AE_TITLE_SCP} -s {PACS_ADDR} -p {PACS_PORT} -f {dcm_compressed_path}  -t {finding_type}"
+            subprocess.run(command.split())
+
+            print(f'Send {Accession_Number} Modified DICOM "Rendered_bbox_image" with execution time: {time.time() - start_time :.2f} seconds')
+            print('  Rendered Bounding Box Done  '.center(100,'='))
+
+        # deleting and clear the variable from memory in python
+        del ds_modify
+        del ds, event
+
+        gc.collect()
+        
+        print('  Done  '.center(100,'='))
+    except Exception as e:
+        bbox_heatmap_dir = os.path.join(BASE_DIR, 'resources', 'temp', ds.AccessionNumber + '_store')
+        with open(os.path.join(bbox_heatmap_dir, "fail.txt"), 'w') as f:
+            f.write(e)
+        print(e)
 
 """
 LOCAL DIRECTORY
