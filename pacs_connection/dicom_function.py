@@ -14,7 +14,7 @@ import gc
 import argparse
 import json
 from evt_classes import *
-from Utilis_DICOM import array_to_dicom, plot_bbox_from_df
+from Utilis_DICOM import png_to_dicom, plot_bbox_from_df
 from Constant import PACS_ADDR, PACS_PORT, AE_TITLE_SCP
 from model.classification_pylon.predict import main as pylon_predict
 
@@ -184,6 +184,12 @@ def save_to_pacs(acc_no, bbox):
         # bbox string to dict
         bbox_dict = json.loads(bbox)
         bbox_heatmap_dir = os.path.join(BASE_DIR, 'resources', 'temp', acc_no + '_store')
+
+        if not os.path.exists(os.path.join(PACS_DIR, acc_no + '.evt')):
+            with open(os.path.join(bbox_heatmap_dir, "fail.txt"), 'w') as f:
+                f.write('File not found')
+            return
+        
         event = load_file(os.path.join(PACS_DIR, acc_no + '.evt'))
 
         ds = event.dataset
@@ -196,7 +202,7 @@ def save_to_pacs(acc_no, bbox):
             if file.endswith('.png'):
                 filename = os.fsdecode(file)
                 finding = filename.split('.')[0]
-                ds_modify, dcm_compressed_path = array_to_dicom(ds, bbox_heatmap_dir, filename)
+                ds_modify, dcm_compressed_path = png_to_dicom(ds, bbox_heatmap_dir, filename)
                 if dcm_compressed_path is None:
                     print(f'Cannot convert image {finding} to dicom')
                     with open(os.path.join(bbox_heatmap_dir, "fail.txt"), 'w') as f:
@@ -219,7 +225,7 @@ def save_to_pacs(acc_no, bbox):
         if isinstance(bbox_dict['data'], list) and len(bbox_dict['data']) > 0:
             # save rendered image to PACS
             plot_bbox_from_df(bbox_dict, ds, os.path.join(bbox_heatmap_dir, 'rendered_bbox_image.png'))
-            ds_modify, dcm_compressed_path = array_to_dicom(ds, bbox_heatmap_dir, 'rendered_bbox_image.png')
+            ds_modify, dcm_compressed_path = png_to_dicom(ds, bbox_heatmap_dir, 'rendered_bbox_image.png')
 
             # SCU Role
             start_time = time.time()
@@ -229,6 +235,19 @@ def save_to_pacs(acc_no, bbox):
 
             print(f'Send {Accession_Number} Modified DICOM "Rendered_bbox_image" with execution time: {time.time() - start_time :.2f} seconds')
             print('  Rendered Bounding Box Done  '.center(100,'='))
+
+        new_ds = ds
+        new_ds.AccessionNumber = 'anonymous' # something
+        new_ds.StudyDate = 'anonymous'
+        new_ds.StudyTime = 'anonymous'
+        new_ds.PatientBirthDate = 'anonymous'
+        new_ds.PatientAge = 'anonymous'
+        new_ds.PatientSex = 'anonymous'
+        new_ds.PatientID = 'anonymous'
+        new_ds.PatientName = '-^-'
+        new_ds.save_as(os.path.join('path_to_save_test.dcm'))
+
+        os.remove(os.path.join(PACS_DIR, acc_no + '.evt'))
 
         # deleting and clear the variable from memory in python
         del ds_modify

@@ -85,8 +85,8 @@ def SCU(path_dcm, addr, port, finding_type, ae_title_scp = b'ANY-SCP'):
         print('Cannot read path_store_log_send_c_store_yesterday or path_store_log_send_c_store_today')
         df_log_send_c_store = pd.DataFrame()
 
-    if 'Accession Number' in df_log_send_c_store.columns and finding_type in df_log_send_c_store.columns:
-        target_acc_num = df_log_send_c_store.loc[df_log_send_c_store['Accession Number'] == ds.AccessionNumber & df_log_send_c_store['Finding'] == finding_type]
+    if 'Accession Number' in df_log_send_c_store.columns and 'Finding' in df_log_send_c_store.columns:
+        target_acc_num = df_log_send_c_store.loc[(df_log_send_c_store['Accession Number'] == ds.AccessionNumber) & (df_log_send_c_store['Finding'] == finding_type)]
     else:
         target_acc_num = []
     if len(target_acc_num) > 0:

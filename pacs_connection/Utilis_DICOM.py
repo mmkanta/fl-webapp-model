@@ -319,7 +319,7 @@ def modify_dicom(ds, modifyDicomNPArray):
     return ds
 
 
-def array_to_dicom(ds, dir, filename):
+def png_to_dicom(ds, dir, filename):
     import pydicom
     import PIL
     import io
