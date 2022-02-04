@@ -1,9 +1,0 @@
-MONGO_URL = "mongodb://<admin>:<admin>@mongo:27017/webapp?authSource=webapp&w=1"
-SECRET = "oUQF9vv5MB77302BJm6HDKulKKPqfukuiW5zMeamAx2JJU21cJkx23MBShP3GVt"
-
-AI_VERSION = "UTC_MDCU_Rad_v1.0.2.6"
-
-PACS_ADDR = "192.1.10.200" #"192.1.10.162" #   "13.229.184.70" # 127.0.0.1
-PACS_PORT = 104 # 104 # 11114 # 11112 # 11113
-
-AE_TITLE_SCP = "SYNAPSEDICOM" #"AE_TITLE_NRT02" #   "MY_ECHO_SCP_AWS" # 

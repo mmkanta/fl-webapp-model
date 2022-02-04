@@ -1,7 +1,7 @@
 FROM python:3.7.1
 
 WORKDIR /code
-RUN apt-get update && apt-get install libgl1 -y && apt-get install libgdcm-tools -y
+RUN apt-get update && apt-get install libgl1 -y
 COPY requirements.txt requirements.txt
 RUN pip install --upgrade pip
 RUN pip install -r requirements.txt

@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 # from pydantic import BaseModel
 import uvicorn
 
-from api import infer, pacs, local
+from api import infer, local
 
 app = FastAPI()
 
@@ -29,13 +29,6 @@ app.include_router(
     infer.router,
     prefix="/api/infer",
     tags=["Inference"],
-    responses={404: {"success": False, "message": "Not found"}},
-)
-
-app.include_router(
-    pacs.router,
-    prefix="/api/pacs",
-    tags=["PACS"],
     responses={404: {"success": False, "message": "Not found"}},
 )
 

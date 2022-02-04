@@ -379,6 +379,24 @@ def check_dicom_exist(acc_no):
     else:
         return False, ""
 
+def get_dicom_location(data):
+    acc_set = set([elem['Accession Number'] for elem in data])
+    BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    LOCAL_DIR = os.path.join(BASE_DIR, 'resources', 'local')
+    for file in os.listdir(LOCAL_DIR):
+        if file.endswith('.dcm'):
+            ds = pydicom.dcmread(os.path.join(LOCAL_DIR, file))
+            if ds.AccessionNumber in acc_set:
+                filename = os.fsdecode(file)
+                for elem in data:
+                    if elem['Accession Number'] == ds.AccessionNumber:
+                        elem['Image ID'] = filename
+                        elem['Folder Name'] = 'local'
+                acc_set.remove(ds.AccessionNumber)
+                if len(acc_set) == 0:
+                    break
+    return data
+
 def plot_bbox_from_df(df_bbox, dicom, image_path):
 
     ### df_bbox คือ json ที่ได้มาจาก database
