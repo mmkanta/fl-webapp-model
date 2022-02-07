@@ -168,10 +168,12 @@ async def clear_dicom_folder():
     LOG_DIR = os.path.join(BASE_DIR, "resources", "log", "log_receive_dcm")
     today_date = datetime.date.today()
     try:
-        if today_date.day > 15: # delete dicom received before 14th
+        delete_date = today_date
+        n = today_date.day
+        if today_date.day == 28: # delete dicom received before 14th
             delete_date = today_date.replace(day=14)
             n = 28
-        else: # delete dicom received before 28th
+        elif today_date.day == 14: # delete dicom received before 28th
             delete_date = today_date.replace(day=28, month=today_date.month-1)
             n = 14
         while delete_date.day != n:
@@ -186,7 +188,38 @@ async def clear_dicom_folder():
                 if acc_no not in used_acc_no and os.path.exists(os.path.join(PACS_DIR, acc_no + '.evt')):
                     os.remove(os.path.join(PACS_DIR, acc_no + '.evt'))
             delete_date = delete_date - datetime.timedelta(days=1)
+        
+        if today_date.day == 28: # change original dicom to dummy dicom
+            delete_date = today_date.replace(day=28, month=today_date.month-1)
+            while True:
+                year = delete_date.year
+                month = delete_date.month
+                df = pd.read_csv(os.path.join(LOG_DIR, year, month, str(delete_date) + '.csv'))
+                unique_acc_no = set(df["Accession Number"])
+                used_acc_no = db["images"].distinct("accession_no", {
+                    "accession_no": {"$in": list(unique_acc_no)},
+                    "hn": {"$ne": ""}
+                    })
+                subprocess.run(["python", os.path.join(BASE_DIR, "pacs_connection", "dicom_function.py"), "-f", "get_dummy", "-l", used_acc_no])
+                delete_date = delete_date - datetime.timedelta(days=1)
+
+                image_id_list = db["images"].find({"accession_no": {"$in": used_acc_no}}, {"_id"})
+                result_list = db["pred_results"].find({"image_id", {"$in": image_id_list}})
+                for result in result_list:
+                    db["pred_results"].find_one_and_update({"_id": result["_id"]}, {
+                        "hn": None,
+                        "patient_name": None
+                    })
+                    db["images"].find_one_and_update({"_id": result["image_id"]}, {
+                        "hn": None,
+                    })
+                    db["medrecords"].find_one_and_update({"_id": result["record_id"]}, {
+                        "record.hn": None,
+                    })
+                if delete_date.day == 28:
+                    break
         del df
-        return
+        return JSONResponse(content={"success": True, "message": "Finish clearing dicom"}, status_code=200)
     except Exception as e:
+        print(traceback.format_exc())
         return JSONResponse(content={"success": False, "message": e}, status_code=500)

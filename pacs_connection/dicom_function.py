@@ -17,6 +17,7 @@ from evt_classes import *
 from Utilis_DICOM import array_to_dicom, plot_bbox_from_df
 from Constant import PACS_ADDR, PACS_PORT, AE_TITLE_SCP
 from model.classification_pylon.predict import main as pylon_predict
+import datetime
 
 # from model.covid19_admission.predict_admission import main as covid_predict
 
@@ -32,6 +33,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('-n', '--hn', type=str, default='', help="Patient's HN")
 parser.add_argument('-f', '--function', type=str, default="", help="Function's Name")
 parser.add_argument('-a', '--accession_no', type=str, default="", help="Accession Number")
+parser.add_argument('-l', '--accession_no_list', type=list, default="", help="Accession Number List")
 parser.add_argument('-m', '--model', type=str, default="", help="Model's Name")
 parser.add_argument('-b', '--bounding_box', type=str, default="", help="Bounding Box Dict")
 parser.add_argument('-s', '--start_date', type=str, default="", help="Start Date")
@@ -81,6 +83,8 @@ def get_all(hn, acc_no, start_date, end_date):
             if file.endswith('.evt'):
                 event = load_file(os.path.join(PACS_DIR, file))
                 ds = event.dataset
+                if ds.PatientID == 'anonymous':
+                    continue
                 if (not hn) and (not acc_no) and (not start_date) and (not end_date):
                     data = extract_ds_info(ds)
                     all_data.append(data)
@@ -155,6 +159,11 @@ def infer(acc_no, model_name):
             event = load_file(os.path.join(PACS_DIR, acc_no + '.evt'))
             ds = event.dataset
             ds.file_meta = event.file_meta
+
+            if ds.PatientID == 'anonymous':
+                with open(os.path.join(file_dir, "fail.txt"), 'w') as f:
+                    f.write('Cannot infer this dicom')
+                return
 
             message = "Error occurred"
             result = False
@@ -237,21 +246,21 @@ def save_to_pacs(acc_no, bbox):
             print('  Rendered Bounding Box Done  '.center(100,'='))
 
         new_ds = ds
-        new_ds.AccessionNumber = 'anonymous' # something
-        new_ds.StudyDate = 'anonymous'
-        new_ds.StudyTime = 'anonymous'
-        new_ds.PatientBirthDate = 'anonymous'
-        new_ds.PatientAge = 'anonymous'
-        new_ds.PatientSex = 'anonymous'
+        # new_ds.AccessionNumber = 'anonymous'
+        # new_ds.StudyDate = 'anonymous'
+        # new_ds.StudyTime = 'anonymous'
+        # new_ds.PatientBirthDate = 'anonymous'
+        # new_ds.PatientAge = 'anonymous'
+        # new_ds.PatientSex = 'anonymous'
         new_ds.PatientID = 'anonymous'
         new_ds.PatientName = '-^-'
-        new_ds.save_as(os.path.join('path_to_save_test.dcm'))
 
         os.remove(os.path.join(PACS_DIR, acc_no + '.evt'))
+        new_ds.save_as(os.path.join(PACS_DIR, acc_no + '.evt'))
 
         # deleting and clear the variable from memory in python
         del ds_modify
-        del ds, event
+        del ds, event, new_ds
 
         gc.collect()
         
@@ -261,6 +270,38 @@ def save_to_pacs(acc_no, bbox):
         with open(os.path.join(bbox_heatmap_dir, "fail.txt"), 'w') as f:
             f.write(e)
         print(e)
+
+def get_dummy(acc_no_list):
+    today_date = datetime.date.today()
+    year = today_date.year
+    log_clear_dicom_path = os.path.join(BASE_DIR, 'log', 'log_clear_dicom', year, str(today_date)+'.csv')
+    for acc_no in acc_no_list:
+        log_data = {'Accession Number': acc_no, "Success": ""}
+
+        if os.path.exists(os.path.join(PACS_DIR, acc_no + '.evt')):
+            try:
+                event = load_file(os.path.join(PACS_DIR, acc_no + '.evt'))
+                ds = event.dataset
+                ds.file_meta = event.file_meta
+
+                if ds.PatientID == 'anonymous':
+                    continue
+                new_ds = ds
+                new_ds.PatientID = 'anonymous'
+                new_ds.PatientName = '-^-'
+
+                os.remove(os.path.join(PACS_DIR, acc_no + '.evt'))
+                new_ds.save_as(os.path.join(PACS_DIR, acc_no + '.evt'))
+                log_data['Success'] = "True"
+
+            except Exception as e:
+                log_data['Success'] = "False"
+                print(e)
+        
+        if not os.path.exists(log_clear_dicom_path):
+            log_data.to_csv(log_clear_dicom_path, index=False)
+        else:
+            log_data.to_csv(log_clear_dicom_path, index=False, mode='a', header=False)
 
 """
 LOCAL DIRECTORY
@@ -350,6 +391,7 @@ def main() -> None:
     hn = args.hn
     func = args.function
     acc_no = args.accession_no
+    acc_no_list = args.accession_no_list
     model = args.model
     bbox = args.bounding_box
     start_date = args.start_date
@@ -364,6 +406,8 @@ def main() -> None:
         infer(acc_no, model)
     elif func == "save_to_pacs":
         save_to_pacs(acc_no, bbox)
+    elif func == "get_dummy":
+        get_dummy(acc_no_list)
     elif func == "get_info_local":
         get_info_local(hn)
     elif func == "get_all_local":
