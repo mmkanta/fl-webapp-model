@@ -10,6 +10,8 @@ import jwt
 import pymongo
 from bson.objectid import ObjectId
 import json
+import pandas as pd
+import datetime
 from zipfile import ZipFile
 from Constant import MONGO_URL, SECRET
 
@@ -159,4 +161,32 @@ async def save_to_pacs(authorization: Optional[str] = Header(None), bbox_data: s
     except Exception as e:
         print(traceback.format_exc())
         # print(e)
+        return JSONResponse(content={"success": False, "message": e}, status_code=500)
+
+@router.delete("/clear", status_code=200)
+async def clear_dicom_folder():
+    LOG_DIR = os.path.join(BASE_DIR, "resources", "log", "log_receive_dcm")
+    today_date = datetime.date.today()
+    try:
+        if today_date.day > 15: # delete dicom received before 14th
+            delete_date = today_date.replace(day=14)
+            n = 28
+        else: # delete dicom received before 28th
+            delete_date = today_date.replace(day=28, month=today_date.month-1)
+            n = 14
+        while delete_date.day != n:
+            year = delete_date.year
+            month = delete_date.month
+            df = pd.read_csv(os.path.join(LOG_DIR, year, month, str(delete_date) + '.csv'))
+            unique_acc_no = set(df["Accession Number"])
+            # check acc no in mongo
+            db = pymongo.MongoClient(MONGO_URL)["webapp"]
+            used_acc_no = db["images"].distinct("accession_no", {"accession_no": {"$in": list(unique_acc_no)}})
+            for acc_no in unique_acc_no:
+                if acc_no not in used_acc_no and os.path.exists(os.path.join(PACS_DIR, acc_no + '.evt')):
+                    os.remove(os.path.join(PACS_DIR, acc_no + '.evt'))
+            delete_date = delete_date - datetime.timedelta(days=1)
+        del df
+        return
+    except Exception as e:
         return JSONResponse(content={"success": False, "message": e}, status_code=500)
