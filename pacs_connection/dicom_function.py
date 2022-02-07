@@ -43,6 +43,10 @@ args = parser.parse_args()
 
 # dicom function called by /api
 
+def save_file(file, save_path):
+    with open(save_path, 'wb') as f:
+        pickle.dump(file, f)
+
 def load_file(file_path):
     with open(file_path, 'rb') as f:
         data = pickle.load(f)
@@ -109,6 +113,8 @@ def get_info(hn):
             if file.endswith('.evt'):
                 event = load_file(os.path.join(PACS_DIR, file))
                 ds = event.dataset
+                if ds.PatientID == 'anonymous':
+                    continue
                 if ds.PatientID == hn:
                     data = dict()
                     data['Patient ID'] = ds.PatientID
@@ -204,8 +210,14 @@ def save_to_pacs(acc_no, bbox):
         ds = event.dataset
         ds.file_meta = event.file_meta
 
+        if ds.PatientID == 'anonymous':
+            with open(os.path.join(bbox_heatmap_dir, "fail.txt"), 'w') as f:
+                f.write('Cannot save this dicom')
+            return
+
         Accession_Number = ds.AccessionNumber
 
+        SCU_path = os.path.join(BASE_DIR, "pacs_connection", "SCU.py")
         # save all heatmap images to PACS
         for file in os.listdir(bbox_heatmap_dir):
             if file.endswith('.png'):
@@ -223,11 +235,11 @@ def save_to_pacs(acc_no, bbox):
                 # SCU Role
                 start_time = time.time()
     
-                SCU_path = os.path.join(BASE_DIR, "pacs_connection", "SCU.py")
                 command = f"python {SCU_path} -a {AE_TITLE_SCP} -s {PACS_ADDR} -p {PACS_PORT} -f {dcm_compressed_path} -t {finding}"
                 subprocess.run(command.split())
 
-                
+                del ds_modify
+
                 print(f'Send {Accession_Number} Modified DICOM "{finding}" with execution time: {time.time() - start_time :.2f} seconds')
                 print(f'  {finding} Done  '.center(100,'='))
                 
@@ -242,25 +254,22 @@ def save_to_pacs(acc_no, bbox):
             command = f"python {SCU_path} -a {AE_TITLE_SCP} -s {PACS_ADDR} -p {PACS_PORT} -f {dcm_compressed_path}  -t {finding_type}"
             subprocess.run(command.split())
 
+            del ds_modify
+
             print(f'Send {Accession_Number} Modified DICOM "Rendered_bbox_image" with execution time: {time.time() - start_time :.2f} seconds')
             print('  Rendered Bounding Box Done  '.center(100,'='))
 
-        new_ds = ds
-        # new_ds.AccessionNumber = 'anonymous'
-        # new_ds.StudyDate = 'anonymous'
-        # new_ds.StudyTime = 'anonymous'
-        # new_ds.PatientBirthDate = 'anonymous'
-        # new_ds.PatientAge = 'anonymous'
-        # new_ds.PatientSex = 'anonymous'
-        new_ds.PatientID = 'anonymous'
-        new_ds.PatientName = '-^-'
+        if not os.path.exists(os.path.join(bbox_heatmap_dir, "fail.txt")):
+            event.dataset.PatientID = 'anonymous'
+            event.dataset.PatientName = '-^-'
+            fake_event = FakeEvent(event)
 
-        os.remove(os.path.join(PACS_DIR, acc_no + '.evt'))
-        new_ds.save_as(os.path.join(PACS_DIR, acc_no + '.evt'))
+            save_file(fake_event, os.path.join(PACS_DIR, acc_no + '.evt'))
+            del fake_event
+            print('  Create Dummy Dicom Done  '.center(100,'='))
 
         # deleting and clear the variable from memory in python
-        del ds_modify
-        del ds, event, new_ds
+        del ds, event
 
         gc.collect()
         
@@ -281,17 +290,15 @@ def get_dummy(acc_no_list):
         if os.path.exists(os.path.join(PACS_DIR, acc_no + '.evt')):
             try:
                 event = load_file(os.path.join(PACS_DIR, acc_no + '.evt'))
-                ds = event.dataset
-                ds.file_meta = event.file_meta
 
-                if ds.PatientID == 'anonymous':
+                if event.dataset.PatientID == 'anonymous':
                     continue
-                new_ds = ds
-                new_ds.PatientID = 'anonymous'
-                new_ds.PatientName = '-^-'
+                event.dataset.PatientID = 'anonymous'
+                event.dataset.PatientName = '-^-'
+                fake_event = FakeEvent(event)
 
-                os.remove(os.path.join(PACS_DIR, acc_no + '.evt'))
-                new_ds.save_as(os.path.join(PACS_DIR, acc_no + '.evt'))
+                save_file(fake_event, os.path.join(PACS_DIR, acc_no + '.evt'))
+                
                 log_data['Success'] = "True"
 
             except Exception as e:

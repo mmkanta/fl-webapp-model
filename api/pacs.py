@@ -153,11 +153,7 @@ async def save_to_pacs(authorization: Optional[str] = Header(None), bbox_data: s
             print(message)
             return JSONResponse(content={"success": False, "message": message}, status_code=500)
 
-        if os.path.exists(os.path.join(bbox_heatmap_dir, "success.txt")):
-            os.remove(os.path.join(BASE_DIR, 'resources', 'files', acc_no + '.evt'))
-            return JSONResponse(content={"success": True, "message": "Save DICOM to PACS successfully"}, status_code=200)
-
-        return JSONResponse(content={"success": False, "message": "Internal server error"}, status_code=500)
+        return JSONResponse(content={"success": True, "message": "Save DICOM to PACS successfully"}, status_code=200)
     except Exception as e:
         print(traceback.format_exc())
         # print(e)
