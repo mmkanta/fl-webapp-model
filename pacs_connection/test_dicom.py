@@ -93,7 +93,7 @@ def save_file(file, save_path):
 
 # for backup in os.listdir(os.path.join(BASE_DIR, 'resources', 'files')):
 #     if backup.endswith('.evt'):
-event = read_event(os.path.join(BASE_DIR, 'resources', 'files', '20191107CR0388.evt'))
+event = read_event(os.path.join(BASE_DIR, 'resources', 'files', '20191216CR0882.evt'))
 ds = event.dataset
 ds.file_meta = event.file_meta
 if isinstance(ds, (pydicom.FileDataset, pydicom.dataset.Dataset)):

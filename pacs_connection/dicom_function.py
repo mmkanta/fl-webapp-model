@@ -33,7 +33,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('-n', '--hn', type=str, default='', help="Patient's HN")
 parser.add_argument('-f', '--function', type=str, default="", help="Function's Name")
 parser.add_argument('-a', '--accession_no', type=str, default="", help="Accession Number")
-parser.add_argument('-l', '--accession_no_list', type=list, default="", help="Accession Number List")
+parser.add_argument('-l', '--accession_no_list', type=str, default="", help="Accession Number List")
 parser.add_argument('-m', '--model', type=str, default="", help="Model's Name")
 parser.add_argument('-b', '--bounding_box', type=str, default="", help="Bounding Box Dict")
 parser.add_argument('-s', '--start_date', type=str, default="", help="Start Date")
@@ -155,10 +155,10 @@ def get_dicom(acc_no):
         print(e)
 
 # inference
-def infer(acc_no, model_name):
+def infer(acc_no, model_name, start_time):
     try:
         acc_no = str(acc_no)
-        file_dir = os.path.join(TEMP_DIR, "{}_{}".format(model_name, acc_no))
+        file_dir = os.path.join(TEMP_DIR, "{}_{}_{}".format(model_name, acc_no, start_time))
         if not os.path.exists(file_dir):
             os.makedirs(file_dir)
         if os.path.exists(os.path.join(PACS_DIR, acc_no + '.evt')):
@@ -280,10 +280,17 @@ def save_to_pacs(acc_no, bbox):
             f.write(e)
         print(e)
 
-def get_dummy(acc_no_list):
+def convert_evt_to_dummy(acc_no_list):
+    acc_no_list = acc_no_list.split(' ')
     today_date = datetime.date.today()
-    year = today_date.year
-    log_clear_dicom_path = os.path.join(BASE_DIR, 'log', 'log_clear_dicom', year, str(today_date)+'.csv')
+    dummy_day = today_date- datetime.timedelta(days=30)
+    year = str(dummy_day.year)
+    month = str(dummy_day.month)
+
+    folder_path = os.path.join(BASE_DIR, 'resources', 'log', 'log_clear_dicom', 'dummy_dicom', year, month)
+    Path(folder_path).mkdir(parents=True, exist_ok=True)
+
+    log_clear_dicom_path = os.path.join(folder_path, str(today_date)+'.csv')
     for acc_no in acc_no_list:
         log_data = {'Accession Number': acc_no, "Success": ""}
 
@@ -299,12 +306,12 @@ def get_dummy(acc_no_list):
 
                 save_file(fake_event, os.path.join(PACS_DIR, acc_no + '.evt'))
                 
-                log_data['Success'] = "True"
+                log_data['Success'] = True
 
             except Exception as e:
-                log_data['Success'] = "False"
+                log_data['Success'] = False
                 print(e)
-        
+        log_data = pd.DataFrame.from_records([log_data])
         if not os.path.exists(log_clear_dicom_path):
             log_data.to_csv(log_clear_dicom_path, index=False)
         else:
@@ -410,11 +417,11 @@ def main() -> None:
     elif func == "get_dicom":
         get_dicom(acc_no)
     elif func == "infer":
-        infer(acc_no, model)
+        infer(acc_no, model, start_date)
     elif func == "save_to_pacs":
         save_to_pacs(acc_no, bbox)
-    elif func == "get_dummy":
-        get_dummy(acc_no_list)
+    elif func == "convert_evt_to_dummy":
+        convert_evt_to_dummy(acc_no_list)
     elif func == "get_info_local":
         get_info_local(hn)
     elif func == "get_all_local":

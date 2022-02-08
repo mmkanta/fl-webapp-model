@@ -28,7 +28,8 @@ done
 # the my_helper_process might need to know how to wait on the
 # primary process to start before it does its work and returns
 
-  
+# warning: LF will be replaced by CRLF in my_wrapper_script.sh.
+
 # now we bring the primary process back into the foreground
 # and leave it there
 fg %1
