@@ -10,8 +10,11 @@ import jwt
 import pymongo
 from bson.objectid import ObjectId
 import json
+import pandas as pd
+import datetime
 from zipfile import ZipFile
 from Constant import MONGO_URL, SECRET
+from pathlib import Path
 
 import os, sys
 import json
@@ -151,12 +154,66 @@ async def save_to_pacs(authorization: Optional[str] = Header(None), bbox_data: s
             print(message)
             return JSONResponse(content={"success": False, "message": message}, status_code=500)
 
-        if os.path.exists(os.path.join(bbox_heatmap_dir, "success.txt")):
-            os.remove(os.path.join(BASE_DIR, 'resources', 'files', acc_no + '.evt'))
-            return JSONResponse(content={"success": True, "message": "Save DICOM to PACS successfully"}, status_code=200)
-
-        return JSONResponse(content={"success": False, "message": "Internal server error"}, status_code=500)
+        return JSONResponse(content={"success": True, "message": "Save DICOM to PACS successfully"}, status_code=200)
     except Exception as e:
         print(traceback.format_exc())
         # print(e)
+        return JSONResponse(content={"success": False, "message": e}, status_code=500)
+
+@router.delete("/clear", status_code=200)
+async def clear_dicom_folder():
+    LOG_DIR = os.path.join(BASE_DIR, "resources", "log", "log_receive_dcm")
+    today_date = datetime.date.today()
+    try:
+        print(str(today_date), 'Start clearing dicom process')
+        # delete dicom (2 weeks)
+        delete_date = today_date - datetime.timedelta(days=15) 
+        year = str(delete_date.year)
+        month = str(delete_date.month)
+
+        folder_path = os.path.join(BASE_DIR, 'resources', 'log', 'log_clear_dicom', 'delete_dicom', year, month)
+        Path(folder_path).mkdir(parents=True, exist_ok=True)
+
+        log_delete_dicom_path = os.path.join(folder_path, str(today_date)+'.csv')
+        if os.path.exists(os.path.join(LOG_DIR, year, month, str(delete_date) + '.csv')):
+            # print(str(delete_date) + '.csv')
+            df = pd.read_csv(os.path.join(LOG_DIR, year, month, str(delete_date) + '.csv'))
+            unique_acc_no = set(df["Accession Number"])
+            # check acc no in mongo
+            db = pymongo.MongoClient(MONGO_URL)["webapp"]
+            used_acc_no = db["images"].distinct("accession_no", {"accession_no": {"$in": list(unique_acc_no)}})
+            # print(used_acc_no, unique_acc_no)
+            for acc_no in unique_acc_no:
+                log_data = {'Accession Number': acc_no, "Success": ""}
+                if acc_no not in used_acc_no and os.path.exists(os.path.join(PACS_DIR, acc_no + '.evt')):
+                    os.remove(os.path.join(PACS_DIR, acc_no + '.evt'))
+                    log_data = {'Accession Number': acc_no, "Success": True}
+                    # print(log_data)
+                    log_data = pd.DataFrame.from_records([log_data])
+                    if not os.path.exists(log_delete_dicom_path):
+                        log_data.to_csv(log_delete_dicom_path, index=False)
+                    else:
+                        log_data.to_csv(log_delete_dicom_path, index=False, mode='a', header=False)
+        
+        # change original dicom to dummy dicom (1 month)
+        dummy_date = today_date - datetime.timedelta(days=31)  
+        year = str(dummy_date.year)
+        month = str(dummy_date.month)
+        used_acc_no = []
+        # print(dummy_date)
+        if os.path.exists(os.path.join(LOG_DIR, year, month, str(dummy_date) + '.csv')):
+            print(str(dummy_date) + '.csv')
+            df = pd.read_csv(os.path.join(LOG_DIR, year, month, str(dummy_date) + '.csv'))
+            unique_acc_no = set(df["Accession Number"])
+            used_acc_no = db["images"].distinct("accession_no", {
+                "accession_no": {"$in": list(unique_acc_no)},
+                "hn": {"$ne": None}
+                })
+            # print(unique_acc_no, used_acc_no)
+            if used_acc_no != []:
+                subprocess.run(["python", os.path.join(BASE_DIR, "pacs_connection", "dicom_function.py"), "-f", "convert_evt_to_dummy", "-l", " ".join(used_acc_no)])
+        
+        return JSONResponse(content={"success": True, "message": "Finish clearing dicom", "data": used_acc_no}, status_code=200)
+    except Exception as e:
+        print(traceback.format_exc())
         return JSONResponse(content={"success": False, "message": e}, status_code=500)

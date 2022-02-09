@@ -93,7 +93,7 @@ def save_file(file, save_path):
 
 # for backup in os.listdir(os.path.join(BASE_DIR, 'resources', 'files')):
 #     if backup.endswith('.evt'):
-event = read_event(os.path.join(BASE_DIR, 'resources', 'files', '20190930CR0530.evt'))
+event = read_event(os.path.join(BASE_DIR, 'resources', 'files', '20191216CR0882.evt'))
 ds = event.dataset
 ds.file_meta = event.file_meta
 if isinstance(ds, (pydicom.FileDataset, pydicom.dataset.Dataset)):
@@ -129,3 +129,7 @@ print(datetime.datetime.fromtimestamp(float(ds.StudyTime)))
 # ds.save_as(os.path.join(BASE_DIR, 'resources', 'files', 'save_test.dcm'))
 print(event.assoc.requestor.ae_title)
 # print(ds)
+# event.dataset.PatientID = '111'
+# event.dataset.PatientName = '-^-'
+# fake_event = FakeEvent(event)
+# save_file(fake_event, os.path.join(BASE_DIR, 'resources', 'files', '20211018CR0846_2.evt'))

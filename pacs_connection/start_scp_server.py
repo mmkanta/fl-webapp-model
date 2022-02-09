@@ -31,7 +31,7 @@ parser.add_argument('-p', '--port', type=int, default=11112, help="listening por
 
 args = parser.parse_args()
 
-ae = AE(ae_title=b'PYNETDICOM')
+ae = AE(ae_title=b'DEEPMEDWEBAPP')
 
 SUPPORTED_ABSTRACT_SYNTAXES = [DigitalXRayImageStorageForPresentation, ComputedRadiographyImageStorage, Verification]
 # SUPPORTED_ABSTRACT_SYNTAXES = [DigitalXRayImagePresentationStorage, ComputedRadiographyImageStorage, VerificationSOPClass]

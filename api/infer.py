@@ -7,6 +7,7 @@ import shutil
 import subprocess
 import time
 import traceback
+from datetime import datetime
 
 import os
 # import json
@@ -24,15 +25,16 @@ def remove_file(path):
 # inference
 @router.get("/{model_name}/{acc_no}", status_code=200)
 async def index(model_name: str, acc_no: str, background_tasks: BackgroundTasks = BackgroundTasks()):
+    now = datetime.now().strftime("%H%M%S")
 
-    file_dir = os.path.join(TEMP_DIR, "{}_{}".format(model_name, acc_no))
+    file_dir = os.path.join(TEMP_DIR, "{}_{}_{}".format(model_name, acc_no, now))
 
     # remove directory after finish process
     background_tasks.add_task(remove_file, file_dir)
     
     try:
         start_time = time.time()
-        subprocess.run(["python", os.path.join(BASE_DIR, "pacs_connection", "dicom_function.py"), "-f", "infer", "-a", acc_no, "-m", model_name])
+        subprocess.run(["python", os.path.join(BASE_DIR, "pacs_connection", "dicom_function.py"), "-f", "infer", "-a", acc_no, "-m", model_name, "-s", now])
         
         if os.path.exists(os.path.join(file_dir, 'success.txt')):
             shutil.make_archive(os.path.join(file_dir, acc_no),

@@ -8,8 +8,8 @@ RUN pip install -r requirements.txt
 COPY . .
 
 EXPOSE 11112 7000
-# USER root 
-# RUN chmod 755 ./pacs_connection/my_wrapper_script.sh
+USER root
+RUN chmod 755 my_wrapper_script.sh
 CMD ./my_wrapper_script.sh
 
 # CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "7000", "--workers", "3"]
