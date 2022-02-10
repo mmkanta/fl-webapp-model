@@ -7,7 +7,6 @@ import pandas as pd
 import pickle
 import subprocess
 import pydicom
-from datetime import datetime
 from pathlib import Path
 import shutil
 import gc
@@ -94,8 +93,8 @@ def get_all(hn, acc_no, start_date, end_date):
                     all_data.append(data)
                 elif ((not hn) or (hn and (hn in ds.PatientID))) \
                     and ((not acc_no) or (acc_no and (acc_no in ds.AccessionNumber))) \
-                    and ((not start_date) or (start_date and (pd.to_datetime(ds.StudyDate, infer_datetime_format=True) >= datetime.fromtimestamp(int(start_date)/1000)))) \
-                    and ((not end_date) or (end_date and (pd.to_datetime(ds.StudyDate, infer_datetime_format=True) <= datetime.fromtimestamp(int(end_date)/1000)))):
+                    and ((not start_date) or (start_date and (pd.to_datetime(ds.StudyDate, infer_datetime_format=True) >= datetime.datetime.fromtimestamp(int(start_date)/1000)))) \
+                    and ((not end_date) or (end_date and (pd.to_datetime(ds.StudyDate, infer_datetime_format=True) <= datetime.datetime.fromtimestamp(int(end_date)/1000)))):
                     data = extract_ds_info(ds)
                     all_data.append(data)
         if all_data != []:
@@ -336,8 +335,8 @@ def get_all_local(hn, acc_no, start_date, end_date):
                     all_data.append(data)
                 elif ((not hn) or (hn and (hn in ds.PatientID))) \
                     and ((not acc_no) or (acc_no and (acc_no in ds.AccessionNumber))) \
-                    and ((not start_date) or (start_date and (pd.to_datetime(ds.StudyDate, infer_datetime_format=True) >= datetime.fromtimestamp(int(start_date)/1000)))) \
-                    and ((not end_date) or (end_date and (pd.to_datetime(ds.StudyDate, infer_datetime_format=True) <= datetime.fromtimestamp(int(end_date)/1000)))):
+                    and ((not start_date) or (start_date and (pd.to_datetime(ds.StudyDate, infer_datetime_format=True) >= datetime.datetime.fromtimestamp(int(start_date)/1000)))) \
+                    and ((not end_date) or (end_date and (pd.to_datetime(ds.StudyDate, infer_datetime_format=True) <= datetime.datetime.fromtimestamp(int(end_date)/1000)))):
                     data = extract_ds_info(ds)
                     all_data.append(data)
         if all_data != []:
