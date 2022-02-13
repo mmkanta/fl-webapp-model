@@ -7,7 +7,7 @@ import pandas as pd
 # import pickle
 # import subprocess
 import pydicom
-from datetime import datetime
+# from datetime import datetime
 # from pathlib import Path
 # import shutil
 # import gc
@@ -124,10 +124,10 @@ def get_info_local(hn):
     except Exception as e:
         print(traceback.format_exc())
 
-def infer_local(acc_no, model_name):
+def infer_local(acc_no, model_name, start_time):
     try:
         acc_no = str(acc_no)
-        file_dir = os.path.join(TEMP_DIR, "local_{}_{}".format(model_name, acc_no))
+        file_dir = os.path.join(TEMP_DIR, "local_{}_{}_{}".format(model_name, acc_no, start_time))
         if not os.path.exists(file_dir):
             os.makedirs(file_dir)
         for file in os.listdir(LOCAL_DIR):
@@ -192,7 +192,7 @@ def main() -> None:
     elif func == "get_all_local":
         get_all_local(hn, acc_no, start_date, end_date)
     elif func == "infer_local":
-        infer_local(acc_no, model)
+        infer_local(acc_no, model, start_date)
     elif func == "get_bbox_img_local":
         get_bbox_img_local(acc_no, bbox)
 

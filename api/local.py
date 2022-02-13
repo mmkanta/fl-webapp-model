@@ -7,6 +7,7 @@ import subprocess
 import traceback
 from typing import Optional, List
 from pydantic import BaseModel
+from datetime import datetime
 
 import os
 import json
@@ -93,13 +94,14 @@ async def get_dicom_file(acc_no: str):
 # inference
 @router.get("/infer/{model_name}/{acc_no}", status_code=200)
 async def infer(model_name: str, acc_no: str, background_tasks: BackgroundTasks = BackgroundTasks()):
+    now = datetime.now().strftime("%H%M%S")
 
-    file_dir = os.path.join(TEMP_DIR, "local_{}_{}".format(model_name, acc_no))
+    file_dir = os.path.join(TEMP_DIR, "local_{}_{}_{}".format(model_name, acc_no, now))
 
     # remove directory after finish process
     background_tasks.add_task(remove_file, file_dir)
     try:
-        subprocess.run(["python", os.path.join(BASE_DIR, "pacs_connection", "dicom_function.py"), "-f", "infer_local", "-a", acc_no, "-m", model_name])
+        subprocess.run(["python", os.path.join(BASE_DIR, "pacs_connection", "dicom_function.py"), "-f", "infer_local", "-a", acc_no, "-m", model_name, "-s", now])
         if os.path.exists(os.path.join(file_dir, 'success.txt')):
             shutil.make_archive(os.path.join(file_dir, acc_no),
                                 'zip',
