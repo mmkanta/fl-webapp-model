@@ -7,7 +7,7 @@ import pandas as pd
 # import pickle
 # import subprocess
 import pydicom
-from datetime import datetime
+# from datetime import datetime
 # from pathlib import Path
 # import shutil
 # import gc
@@ -17,6 +17,7 @@ import json
 from Utilis_DICOM import array_to_dicom, plot_bbox_from_df
 # from Constant import PACS_ADDR, PACS_PORT, AE_TITLE_SCP
 from model.classification_pylon.predict import main as pylon_predict
+import datetime
 
 # from model.covid19_admission.predict_admission import main as covid_predict
 
@@ -32,6 +33,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('-n', '--hn', type=str, default='', help="Patient's HN")
 parser.add_argument('-f', '--function', type=str, default="", help="Function's Name")
 parser.add_argument('-a', '--accession_no', type=str, default="", help="Accession Number")
+parser.add_argument('-l', '--accession_no_list', type=str, default="", help="Accession Number List")
 parser.add_argument('-m', '--model', type=str, default="", help="Model's Name")
 parser.add_argument('-b', '--bounding_box', type=str, default="", help="Bounding Box Dict")
 parser.add_argument('-s', '--start_date', type=str, default="", help="Start Date")
@@ -88,8 +90,8 @@ def get_all_local(hn, acc_no, start_date, end_date):
                     all_data.append(data)
                 elif ((not hn) or (hn and (hn in ds.PatientID))) \
                     and ((not acc_no) or (acc_no and (acc_no in ds.AccessionNumber))) \
-                    and ((not start_date) or (start_date and (pd.to_datetime(ds.StudyDate, infer_datetime_format=True) >= datetime.fromtimestamp(int(start_date)/1000)))) \
-                    and ((not end_date) or (end_date and (pd.to_datetime(ds.StudyDate, infer_datetime_format=True) <= datetime.fromtimestamp(int(end_date)/1000)))):
+                    and ((not start_date) or (start_date and (pd.to_datetime(ds.StudyDate, infer_datetime_format=True) >= datetime.datetime.fromtimestamp(int(start_date)/1000)))) \
+                    and ((not end_date) or (end_date and (pd.to_datetime(ds.StudyDate, infer_datetime_format=True) <= datetime.datetime.fromtimestamp(int(end_date)/1000)))):
                     data = extract_ds_info(ds)
                     all_data.append(data)
         if all_data != []:
@@ -122,10 +124,10 @@ def get_info_local(hn):
     except Exception as e:
         print(traceback.format_exc())
 
-def infer_local(acc_no, model_name):
+def infer_local(acc_no, model_name, start_time):
     try:
         acc_no = str(acc_no)
-        file_dir = os.path.join(TEMP_DIR, "local_{}_{}".format(model_name, acc_no))
+        file_dir = os.path.join(TEMP_DIR, "local_{}_{}_{}".format(model_name, acc_no, start_time))
         if not os.path.exists(file_dir):
             os.makedirs(file_dir)
         for file in os.listdir(LOCAL_DIR):
@@ -170,6 +172,7 @@ def main() -> None:
     hn = args.hn
     func = args.function
     acc_no = args.accession_no
+    acc_no_list = args.accession_no_list
     model = args.model
     bbox = args.bounding_box
     start_date = args.start_date
@@ -189,7 +192,7 @@ def main() -> None:
     elif func == "get_all_local":
         get_all_local(hn, acc_no, start_date, end_date)
     elif func == "infer_local":
-        infer_local(acc_no, model)
+        infer_local(acc_no, model, start_date)
     elif func == "get_bbox_img_local":
         get_bbox_img_local(acc_no, bbox)
 
