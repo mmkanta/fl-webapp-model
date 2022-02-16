@@ -71,6 +71,10 @@ def extract_ds_info(ds):
         data['Study Date Time'] = str(pd.to_datetime(ds.StudyDate)) # ds.StudyTime
     except:
         data["Study Date Time"] = ""
+    try:
+        data['Patient Birthdate'] = str(pd.to_datetime(ds.PatientBirthDate))
+    except:
+        data['Patient Birthdate'] = ds.PatientBirthDate
     # data['Proc Description'] = 'Chest PA upright'
     return data
 
