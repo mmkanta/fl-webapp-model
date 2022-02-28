@@ -269,7 +269,7 @@ def resize_image(array, size, keep_ratio=False, resample=Image.LANCZOS):
     return np.array(image)
 
 def main(ds, file_dir, model_name):
-    print("Inference start")
+    print(f"[{ds.AccessionNumber}] Inference start")
     try:
         checkpoint = ""
         model_size = '1024'
