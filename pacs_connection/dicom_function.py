@@ -51,6 +51,17 @@ def load_file(file_path):
         data = pickle.load(f)
     return data
 
+def extract_date(StudyDate, StudyTime):
+    study_date_time = ""
+    try:
+        try:
+            study_date_time = pd.to_datetime(StudyDate + StudyTime, infer_datetime_format=True)
+        except:
+            study_date_time = pd.to_datetime(StudyDate, infer_datetime_format=True)
+    except:
+        study_date_time = ""
+    return study_date_time
+
 # extract dicom info for 'select cxr' page
 def extract_ds_info(ds):
     data = dict()
@@ -67,10 +78,7 @@ def extract_ds_info(ds):
         data['Procedure Code'] = ds[0x020,0x0010].value
     except:
         data["Procedure Code"] = ""
-    try:
-        data['Study Date Time'] = str(pd.to_datetime(ds.StudyDate)) # ds.StudyTime
-    except:
-        data["Study Date Time"] = ""
+    data['Study Date Time'] = str(extract_date(ds.StudyDate, ds.StudyTime))
     try:
         data['Patient Birthdate'] = str(pd.to_datetime(ds.PatientBirthDate))
     except:
@@ -90,6 +98,7 @@ def get_all(hn, acc_no, start_date, end_date):
             if file.endswith('.evt'):
                 event = load_file(os.path.join(PACS_DIR, file))
                 ds = event.dataset
+                dcm_date = extract_date(ds.StudyDate, ds.StudyTime)
                 if ds.PatientID == 'anonymous':
                     continue
                 if (not hn) and (not acc_no) and (not start_date) and (not end_date):
@@ -97,8 +106,8 @@ def get_all(hn, acc_no, start_date, end_date):
                     all_data.append(data)
                 elif ((not hn) or (hn and (hn in ds.PatientID))) \
                     and ((not acc_no) or (acc_no and (acc_no in ds.AccessionNumber))) \
-                    and ((not start_date) or (start_date and (pd.to_datetime(ds.StudyDate, infer_datetime_format=True) >= datetime.datetime.fromtimestamp(int(start_date)/1000)))) \
-                    and ((not end_date) or (end_date and (pd.to_datetime(ds.StudyDate, infer_datetime_format=True) <= datetime.datetime.fromtimestamp(int(end_date)/1000)))):
+                    and ((not start_date) or (start_date and (dcm_date >= datetime.datetime.fromtimestamp(int(start_date)/1000)))) \
+                    and ((not end_date) or (end_date and (dcm_date <= datetime.datetime.fromtimestamp(int(end_date)/1000)))):
                     data = extract_ds_info(ds)
                     all_data.append(data)
         if all_data != []:
@@ -334,13 +343,14 @@ def get_all_local(hn, acc_no, start_date, end_date):
         for file in os.listdir(LOCAL_DIR):
             if file.endswith('.dcm'):
                 ds = pydicom.dcmread(os.path.join(LOCAL_DIR, file))
+                dcm_date = extract_date(ds.StudyDate, ds.StudyTime)
                 if (not hn) and (not acc_no) and (not start_date) and (not end_date):
                     data = extract_ds_info(ds)
                     all_data.append(data)
                 elif ((not hn) or (hn and (hn in ds.PatientID))) \
                     and ((not acc_no) or (acc_no and (acc_no in ds.AccessionNumber))) \
-                    and ((not start_date) or (start_date and (pd.to_datetime(ds.StudyDate, infer_datetime_format=True) >= datetime.datetime.fromtimestamp(int(start_date)/1000)))) \
-                    and ((not end_date) or (end_date and (pd.to_datetime(ds.StudyDate, infer_datetime_format=True) <= datetime.datetime.fromtimestamp(int(end_date)/1000)))):
+                    and ((not start_date) or (start_date and (dcm_date >= datetime.datetime.fromtimestamp(int(start_date)/1000)))) \
+                    and ((not end_date) or (end_date and (dcm_date <= datetime.datetime.fromtimestamp(int(end_date)/1000)))):
                     data = extract_ds_info(ds)
                     all_data.append(data)
         if all_data != []:

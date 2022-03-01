@@ -14,6 +14,7 @@ print(BASE_DIR)
 
 i = 0
 names = ['Linnet Campo', 'Marika McNiven', 'Thera Sharp']
+print(pd.to_datetime('20211002121211', infer_datetime_format=True))
 
 # for file in os.listdir(os.path.join(BASE_DIR, 'resources', 'local')):
 #     i = i + 1
@@ -93,7 +94,7 @@ def save_file(file, save_path):
 
 # for backup in os.listdir(os.path.join(BASE_DIR, 'resources', 'files')):
 #     if backup.endswith('.evt'):
-event = read_event(os.path.join(BASE_DIR, 'resources', 'files', '20191216CR0882.evt'))
+event = read_event(os.path.join(BASE_DIR, 'resources', 'files', '20220209CR0907.evt'))
 ds = event.dataset
 ds.file_meta = event.file_meta
 if isinstance(ds, (pydicom.FileDataset, pydicom.dataset.Dataset)):
@@ -108,8 +109,8 @@ print(ds.Modality)
 print(ds.BodyPartExamined)
 print(ds.ViewPosition)
 print(ds.StudyDescription)
-print(ds.ProcedureCodeSequence)
-print(ds.PerformedProtocolCodeSequence)
+# print(ds.ProcedureCodeSequence)
+# print(ds.PerformedProtocolCodeSequence)
 # print(ds.PixelData)
 print(ds.ImagerPixelSpacing)
 print(ds.WindowCenter)
@@ -122,8 +123,8 @@ print(ds.PatientName.family_name + " " + ds.PatientName.given_name)
 print(ds.PatientSex)
 print(ds.PatientAge)
 print(ds.PatientBirthDate)
-print(ds.StudyDate)
-print(pd.to_datetime(ds.StudyDate, infer_datetime_format=True))
+print(ds.StudyDate + ds.StudyTime)
+print(pd.to_datetime(ds.StudyDate + ds.StudyTime, infer_datetime_format=True))
 # print(pd.to_datetime(1642926950790))
 print(datetime.datetime.fromtimestamp(float(ds.StudyTime)))
 # ds.save_as(os.path.join(BASE_DIR, 'resources', 'files', 'save_test.dcm'))

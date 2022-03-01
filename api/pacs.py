@@ -41,7 +41,7 @@ def validate_authorization(authorization, result_id):
         project = db["projects"].find_one({"_id": result["project_id"]})
         if user["_id"] in project["head"]:
             return True, ""
-        return False, ""
+        return False, "User is not project's head"
     except:
         print(traceback.format_exc())
         return False, "User is unauthorized or cannot connect to database"

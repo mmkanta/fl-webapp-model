@@ -25,7 +25,7 @@ def remove_file(path):
 # inference
 @router.get("/{model_name}/{acc_no}", status_code=200)
 async def index(model_name: str, acc_no: str, background_tasks: BackgroundTasks = BackgroundTasks()):
-    now = datetime.now().strftime("%H%M%S")
+    now = datetime.now().strftime("%H%M%S%f")
 
     file_dir = os.path.join(TEMP_DIR, "{}_{}_{}".format(model_name, acc_no, now))
 

@@ -15,16 +15,16 @@ python-multipart==0.0.5
 # pylibjpeg-rle==1.1.0
 pynetdicom==2.0.1
 
-opencv-python-headless
+opencv-python-headless==4.5.5.62
 # streamlit
-watchdog
-aiofiles
-python-gdcm
+watchdog==2.1.6
+aiofiles==0.8.0
+python-gdcm==3.0.10
 # scipy
-imageio
-matplotlib
+imageio==2.14.1
+matplotlib==3.5.1
 # GPUtil
 
-cryptography
-PyJWT
-pymongo
+cryptography==36.0.1
+PyJWT==2.3.0
+pymongo==4.0.1
