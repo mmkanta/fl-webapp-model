@@ -47,7 +47,24 @@ def SCU(path_dcm, addr, port, finding_type, ae_title_scp = b'ANY-SCP'):
     # Extract the metadata
     metadata_dict = {}
     metadata_dict["Accession Number"] = ds.AccessionNumber
-    metadata_dict["ID"] = ds.PatientID
+
+    folder_path = os.path.join(BASE_DIR, 'resources', 'log')
+    Path(folder_path).mkdir(parents=True, exist_ok=True)
+    hn_map_path = os.path.join(folder_path, 'hn_map.csv')
+
+    patientID = -1
+    if not os.path.exists(hn_map_path):
+        pd.DataFrame.from_records([{'ID': ds.PatientID}]).to_csv(hn_map_path, index=False)
+        patientID = 0
+    else:
+        df = pd.read_csv(hn_map_path)
+        patientID = df[df['ID'] == int(ds.PatientID)].index.tolist()
+        if patientID == []:
+            pd.DataFrame.from_records([{'ID': ds.PatientID}]).to_csv(hn_map_path, index=False, mode='a', header=False)
+            patientID = len(df) - 1
+        patientID = patientID[0]
+        del df
+    metadata_dict["ID"] = patientID
     # metadata_dict["ae_title"] = ae_title_scp
     # metadata_dict["address"] = addr
     # metadata_dict["port"] = port
@@ -182,3 +199,4 @@ if __name__ == "__main__":
     main()
 
 ## example cmd: python SCU.py -a MY_ECHO_SCP -s localhost -p 11112 -f "/Users/plotpro/Downloads/Sample_Dicom_Present_ID/0034081.dcm"
+## python -m pynetdicom storescu 127.0.0.1 11112 0040796.dcm -v -cx
