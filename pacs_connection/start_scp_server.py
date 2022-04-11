@@ -210,22 +210,20 @@ def handle_store(event):
     # create_path_and_save_png(ds, metadata_df)
     # print(ds)
 
-    folder_path = os.path.join(BASE_DIR, 'resources', 'log', 'log_receive_dcm')
+    folder_path = os.path.join(BASE_DIR, 'resources', 'log')
     Path(folder_path).mkdir(parents=True, exist_ok=True)
     hn_map_path = os.path.join(folder_path, 'hn_map.csv')
 
-    patientID = 0
+    patientID = -1
     if not os.path.exists(hn_map_path):
         pd.DataFrame.from_records([{'ID': ds.PatientID}]).to_csv(hn_map_path, index=False)
-        patientID = 1
+        patientID = 0
     else:
         df = pd.read_csv(hn_map_path)
         patientID = df[df['ID'] == int(ds.PatientID)].index.tolist()
         if patientID == []:
             pd.DataFrame.from_records([{'ID': ds.PatientID}]).to_csv(hn_map_path, index=False, mode='a', header=False)
-            df = pd.read_csv(hn_map_path)
-            patientID = df[df['ID'] == int(ds.PatientID)].index.tolist()
-        patientID = patientID[0] + 1
+            patientID = len(df) - 1
         del df
 
     metadata_df.loc[0, 'ID'] = patientID

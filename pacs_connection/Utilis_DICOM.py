@@ -466,6 +466,13 @@ def plot_bbox_from_df(df_bbox, dicom, image_path):
 
         if row['tool'] == 'ratio':
             all_ratio.append((row["label"],row["data"]["ratio"],row["color"]))
+
+        if row['tool'] == 'arrowAnnotate':
+            pts = row["data"]["handles"]
+            text_org = "start"
+            if pts["start"]["x"] > pts["end"]["x"]: text_org = "end"
+            inputImage = cv2.arrowedLine(inputImage, (int(pts["end"]["x"]), int(pts["end"]["y"])),(int(pts["start"]["x"]), int(pts["start"]["y"])), row["color"],thickness)
+            inputImage = cv2.putText(inputImage,  row["label"], (int(pts["end"]["x"]),int(pts["end"]["y"])), font, fontScale, row["color"], thickness, cv2.LINE_AA)
     
     #write all ratios on top-left
     for i in range(len(all_ratio)):
