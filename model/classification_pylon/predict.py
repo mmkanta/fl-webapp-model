@@ -181,7 +181,29 @@ def preprocess(image, size = 1024):
     image = np.expand_dims(image, axis=(0, 1))
     return image
 
-def predict(image, net_predict, threshold_dict, class_dict):
+def predict(ds):
+    checkpoint = ""
+    model_size = '1024'
+    # if model_name == "classification_pylon_256":
+    #     model_size = '256'
+
+    if model_size == '1024':
+        checkpoint = os.path.join(BASE_DIR, 'pylon_densenet169_ImageNet_1024_selectRad_V2.onnx')
+    # elif model_size == '256':
+    #     checkpoint = os.path.join(BASE_DIR, 'pylon_densenet169_ImageNet_256_selectRad_V2.onnx')
+
+    net_predict = onnxruntime.InferenceSession(checkpoint)
+    image_load = ''
+
+    if isinstance(ds, (pydicom.FileDataset, pydicom.dataset.Dataset)):
+        dicom, image_load = dicom2array(ds)
+    else:
+        image_load = ds
+
+    image_load = resize_image(image_load, size=1024, keep_ratio=True)
+
+    image = preprocess(image_load, int(model_size))
+
     ort_session = net_predict
     ort_inputs = {ort_session.get_inputs()[0].name: image}
     out = ort_session.run(None, ort_inputs)
@@ -222,7 +244,7 @@ def predict(image, net_predict, threshold_dict, class_dict):
     # risk_dict = {'risk_score': 1 - df_prob_class['No Finding'].values[0]}
     all_pred_df = get_all_pred_df(CATEGORIES, y_calibrated, y_uncalibrated, threshold_dict)
 
-    return pred, seg, all_pred_class, all_pred_df
+    return pred, seg, all_pred_class, all_pred_df, image_load
 
 def overlay_cam(img, cam, weight=0.5, img_max=255.):
     """
@@ -271,28 +293,7 @@ def resize_image(array, size, keep_ratio=False, resample=Image.LANCZOS):
 def main(ds, file_dir, model_name):
     print(f"[{ds.AccessionNumber}] Inference start")
     try:
-        checkpoint = ""
-        model_size = '1024'
-        # if model_name == "classification_pylon_256":
-        #     model_size = '256'
-
-        if model_size == '1024':
-            checkpoint = os.path.join(BASE_DIR, 'pylon_densenet169_ImageNet_1024_selectRad_V2.onnx')
-        # elif model_size == '256':
-        #     checkpoint = os.path.join(BASE_DIR, 'pylon_densenet169_ImageNet_256_selectRad_V2.onnx')
-
-        net_predict = onnxruntime.InferenceSession(checkpoint)
-        image_load = ''
-
-        if isinstance(ds, (pydicom.FileDataset, pydicom.dataset.Dataset)):
-            dicom, image_load = dicom2array(ds)
-        else:
-            image_load = ds
-
-        image_load = resize_image(image_load, size=1024, keep_ratio=True)
-
-        image = preprocess(image_load, int(model_size))
-        pred, seg, all_pred_class, all_pred_df = predict(image, net_predict, threshold_dict, class_dict)
+        pred, seg, all_pred_class, all_pred_df, image_load = predict(ds)
         
         res_dir = os.path.join(file_dir, 'result')
         if not os.path.exists(res_dir):

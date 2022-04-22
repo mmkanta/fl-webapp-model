@@ -8,6 +8,9 @@ import subprocess
 import time
 import traceback
 from datetime import datetime
+from pydantic import BaseModel
+from typing import Optional
+
 
 import os
 # import json
@@ -17,14 +20,26 @@ router = APIRouter()
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TEMP_DIR = os.path.join(BASE_DIR, 'resources', 'temp')
 
+# record not optional?
+class InferData(BaseModel):
+    model_name: str
+    acc_no: str
+    record: Optional[str] = None
+
 def remove_file(path):
     if os.path.exists(path):
         shutil.rmtree(path)
         print('Finish clearing temporary file')
 
 # inference
-@router.get("/{model_name}/{acc_no}", status_code=200)
-async def index(model_name: str, acc_no: str, background_tasks: BackgroundTasks = BackgroundTasks()):
+@router.post("/", status_code=200)
+async def index(inferData: InferData, background_tasks: BackgroundTasks = BackgroundTasks()):
+    model_name = inferData.model_name
+    acc_no = inferData.acc_no
+    record = inferData.record
+    # print(model_name, acc_no)
+    # print(record)
+
     now = datetime.now().strftime("%H%M%S%f")
 
     file_dir = os.path.join(TEMP_DIR, "{}_{}_{}".format(model_name, acc_no, now))
@@ -34,7 +49,7 @@ async def index(model_name: str, acc_no: str, background_tasks: BackgroundTasks 
     
     try:
         start_time = time.time()
-        subprocess.run(["python", os.path.join(BASE_DIR, "pacs_connection", "dicom_function.py"), "-f", "infer", "-a", acc_no, "-m", model_name, "-s", now])
+        subprocess.run(["python", os.path.join(BASE_DIR, "pacs_connection", "dicom_function.py"), "-f", "infer", "-a", acc_no, "-m", model_name, "-s", now, "-d", record])
         
         if os.path.exists(os.path.join(file_dir, 'success.txt')):
             shutil.make_archive(os.path.join(file_dir, acc_no),

@@ -16,6 +16,7 @@ from evt_classes import *
 from Utilis_DICOM import array_to_dicom, plot_bbox_from_df
 from Constant import PACS_ADDR, PACS_PORT, AE_TITLE_SCP
 from model.classification_pylon.predict import main as pylon_predict
+from model.covid19_admission.predict_admission import main as covid_predict
 import datetime
 
 # from model.covid19_admission.predict_admission import main as covid_predict
@@ -37,6 +38,7 @@ parser.add_argument('-m', '--model', type=str, default="", help="Model's Name")
 parser.add_argument('-b', '--bounding_box', type=str, default="", help="Bounding Box Dict")
 parser.add_argument('-s', '--start_date', type=str, default="", help="Start Date")
 parser.add_argument('-e', '--end_date', type=str, default="", help="End Date")
+parser.add_argument('-d', '--data', type=str, default="", help="Related Data")
 
 args = parser.parse_args()
 
@@ -167,7 +169,7 @@ def get_dicom(acc_no):
         print(e)
 
 # inference
-def infer(acc_no, model_name, start_time):
+def infer(acc_no, model_name, start_time, data):
     try:
         acc_no = str(acc_no)
         file_dir = os.path.join(TEMP_DIR, "{}_{}_{}".format(model_name, acc_no, start_time))
@@ -182,22 +184,22 @@ def infer(acc_no, model_name, start_time):
                 with open(os.path.join(file_dir, "fail.txt"), 'w') as f:
                     f.write('Cannot infer this dicom')
                 return
-
+            
             message = "Error occurred"
             result = False
             if "classification_pylon" in model_name:
                 result, message = pylon_predict(ds, file_dir, model_name)
-            # elif model_name == "covid19_admission":
-            #     result = covid_predict(file_dir)
+            elif model_name == "covid19_admission":
+                record = json.loads(data)
+                result, message = covid_predict(ds, file_dir, record)
             else:
                 message = "Model not found"
-
             if result:
                 with open(os.path.join(file_dir, "success.txt"), 'w') as f:
                     f.write('infer successfully')
             else:
                 with open(os.path.join(file_dir, "fail.txt"), 'w') as f:
-                    f.write(message)
+                    f.write(str(message))
         else:
             with open(os.path.join(file_dir, "fail.txt"), 'w') as f:
                 f.write('Cannot find dicom file')
@@ -289,7 +291,7 @@ def save_to_pacs(acc_no, bbox):
     except Exception as e:
         bbox_heatmap_dir = os.path.join(BASE_DIR, 'resources', 'temp', ds.AccessionNumber + '_store')
         with open(os.path.join(bbox_heatmap_dir, "fail.txt"), 'w') as f:
-            f.write(e)
+            f.write(str(e))
         print(e)
 
 def convert_evt_to_dummy(acc_no_list):
@@ -423,6 +425,7 @@ def main() -> None:
     bbox = args.bounding_box
     start_date = args.start_date
     end_date = args.end_date
+    data = args.data
     if func == "get_info":
         get_info(hn)
     elif func == "get_all":
@@ -430,7 +433,7 @@ def main() -> None:
     elif func == "get_dicom":
         get_dicom(acc_no)
     elif func == "infer":
-        infer(acc_no, model, start_date)
+        infer(acc_no, model, start_date, data)
     elif func == "save_to_pacs":
         save_to_pacs(acc_no, bbox)
     elif func == "convert_evt_to_dummy":
