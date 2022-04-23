@@ -14,26 +14,33 @@ threshold = [0.5, 0.5, 0.5]
 def prepare_x(all_pred_df, record):
     # merge df
     # prepare data
-    img_df = pd.DataFrame(columns=all_pred_df['Finding'])
-    img_df.loc[0] = all_pred_df['Confidence']
-
-    record_df = pd.DataFrame()
-    record_df = record_df.append(record, ignore_index=True)
-
-    x_data = pd.concat([record_df, img_df], axis=1)
-
-    obj_cols = []
-    for cname, ctype in x_data.dtypes.iteritems():
-        if ctype=='object' and cname!='Image file':
-            obj_cols.append(cname)
-    # get dummy for nominal data
-    x_data = pd.get_dummies(x_data, columns=obj_cols, drop_first=True)
-    
-    # fill missing columns
     f = open(os.path.join(BASE_DIR, 'covid19_admission', 'required_columns.json'))
     required_cols = (json.load(f))['columns']
     f.close()
 
+    img_columns = ['_'.join(col.split(' ')) for col in all_pred_df['Finding']]
+    img_df = pd.DataFrame(columns=img_columns)
+    img_df.loc[0] = all_pred_df['Confidence']
+
+    record_new = {}
+    # zero_cols = [] # used to fill na with zero (to replace get_dummies)
+    for k, v in record.items():
+        if isinstance(v, type(None)):
+            record_new[k] = np.nan
+        elif isinstance(v, str):
+            col_name = f'{k}_{v}'
+            # tmp = [c for c in required_cols if (k in c) and (c != col_name)]
+            # zero_cols = zero_cols + tmp
+            record_new[col_name] = 1
+        else:
+            record_new[k] = v
+
+    record_df = pd.DataFrame()
+    record_df = record_df.append(record_new, ignore_index=True)
+
+    x_data = pd.concat([record_df, img_df], axis=1)
+    
+    # fill missing columns
     x_cols = x_data.columns
     missing_cols = []
     for col in required_cols:
@@ -42,17 +49,18 @@ def prepare_x(all_pred_df, record):
     
     missing_df = pd.DataFrame(columns=missing_cols)
     x_new = pd.concat([x_data, missing_df], axis=1)
+    # x_new[zero_cols] = 0
     x_new = x_new[required_cols]
+    # print(x_new.columns, x_new.to_numpy())
     return x_new.to_numpy()
 
 def predict(ds, record):
     _, _, _, all_pred_df, image_load = pylon_predict(ds) 
 
-    # wrong cxr confidence
     # what to do with nan?
     x_data = prepare_x(all_pred_df, record)
 
-    # xgboost old version
+    # xgboost old version / version changed -> score changed??
     clf1 = XGBClassifier()
     clf1.load_model(os.path.join(BASE_DIR, 'covid19_admission', "xgb_covid_d_1.json"))
     pred_d1 = (clf1.predict_proba(x_data))[0][1]
