@@ -1,5 +1,6 @@
 from io import BytesIO
 from model.classification_pylon.dataset_cpu import *
+from pacs_connection.Utilis_DICOM import dicom2array, resize_image
 
 import onnxruntime
 
@@ -107,49 +108,6 @@ threshold_df = pd.DataFrame({
 threshold_dict = threshold_df['F1_Score'].to_dict()
 CATEGORIES = list(threshold_dict.keys())
 class_dict = {cls:i for i, cls in enumerate(CATEGORIES)}
-
-
-# Convert DICOM to Numpy Array
-def dicom2array(file, voi_lut=True, fix_monochrome=True):
-    """Convert DICOM file to numy array
-    
-    Args:
-        file : input object or uploaded file
-        path (str): Path to the DICOM file to be converted
-        voi_lut (bool): Whether or not VOI LUT is available
-        fix_monochrome (bool): Whether or not to apply MONOCHROME fix
-        
-    Returns:
-        Numpy array of the respective DICOM file
-    """
-    
-    # Use the pydicom library to read the DICOM file
-
-    if not isinstance(file, (pydicom.FileDataset, pydicom.dataset.Dataset)):
-        try: # If file is uploaded with fastapi.UploadFile
-            path = BytesIO(file)
-            dicom = pydicom.read_file(path)
-        except: # If file is uploaded with streamlit.file_uploader
-            dicom = pydicom.read_file(file)
-    else: # if file is readed dicom file
-        dicom = file
-    
-    # VOI LUT (if available by DICOM device) is used to transform raw DICOM data to "human-friendly" view
-    if voi_lut:
-        data = apply_voi_lut(dicom.pixel_array, dicom)
-    else:
-        data = dicom.pixel_array
-        
-    # Depending on this value, X-ray may look inverted - fix that
-    if fix_monochrome and dicom.PhotometricInterpretation == "MONOCHROME1":
-        data = np.amax(data) - data
-        
-    # Normalize the image array
-    data = data - np.min(data)
-    data = data / np.max(data)
-    data = (data * 255).astype(np.uint8)
-    
-    return dicom, data
 
 def get_all_pred_df(CATEGORIES, y_calibrated, y_uncalibrated, threshold_dict):
     result_dict = {}
@@ -280,22 +238,11 @@ def overlay_cam(img, cam, weight=0.5, img_max=255.):
     x = x / x.max()
     return x
 
-def resize_image(array, size, keep_ratio=False, resample=Image.LANCZOS):
-    image = Image.fromarray(array)
-    
-    if keep_ratio:
-        image.thumbnail((size, size), resample)
-    else:
-        image = image.resize((size, size), resample)
-    
-    return np.array(image)
-
-def main(ds, file_dir, model_name):
+def main(ds, res_dir, model_name):
     print(f"[{ds.AccessionNumber}] Inference start")
     try:
         pred, seg, all_pred_class, all_pred_df, image_load = predict(ds)
         
-        res_dir = os.path.join(file_dir, 'result')
         if not os.path.exists(res_dir):
             os.makedirs(res_dir)
         
@@ -311,9 +258,6 @@ def main(ds, file_dir, model_name):
             cam = cv2.cvtColor(np.float32(cam*255), cv2.COLOR_BGR2RGB)
             cam = cv2.resize(cam, (0,0), fx=scale, fy=scale)
             cv2.imwrite(os.path.join(res_dir, i_class + '.png'), cam)
-
-        original_image = cv2.resize(np.array(image_load), (0,0), fx=scale, fy=scale)
-        cv2.imwrite(os.path.join(res_dir, 'original.png'), original_image)
 
         if 'PatientName' in ds:
             all_pred_df['patient_name'] = ds.PatientName.given_name + " " + ds.PatientName.family_name

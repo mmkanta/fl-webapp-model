@@ -62,6 +62,7 @@ async def index(inferData: InferData, background_tasks: BackgroundTasks = Backgr
             message = "error"
             with open(os.path.join(file_dir, 'fail.txt'), "r") as f:
                 message = f.readline()
+            print('[Error]', message)
             return JSONResponse(content={"success": False, "message": message}, status_code=500)
 
     except Exception as e:

@@ -55,7 +55,7 @@ def prepare_x(all_pred_df, record):
     return x_new.to_numpy()
 
 def predict(ds, record):
-    _, _, _, all_pred_df, image_load = pylon_predict(ds) 
+    _, _, _, all_pred_df, _ = pylon_predict(ds) 
 
     # what to do with nan?
     x_data = prepare_x(all_pred_df, record)
@@ -88,23 +88,18 @@ def predict(ds, record):
         ]
     }
 
-    return pred, image_load
+    return pred
 
-def main(ds, file_dir, record):
+def main(ds, res_dir, record):
     try:
-        res_dir = os.path.join(file_dir, 'result')
         if not os.path.exists(res_dir):
             os.makedirs(res_dir)
 
-        pred, image_load = predict(ds, record)
+        pred = predict(ds, record)
         if 'PatientName' in ds:
             pred['patient_name'] = ds.PatientName.given_name + " " + ds.PatientName.family_name
         with open(os.path.join(res_dir, 'prediction.txt'), 'w') as f:
             json.dump(pred, f)
-
-        scale = 512/np.array(image_load).shape[0]
-        original_image = cv2.resize(np.array(image_load), (0,0), fx=scale, fy=scale)
-        cv2.imwrite(os.path.join(res_dir, 'original.png'), original_image)
 
         return True, ""
     except Exception as e:
