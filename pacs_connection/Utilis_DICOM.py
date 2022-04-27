@@ -2,6 +2,8 @@ import pandas as pd
 # from glob import glob
 import pydicom, numpy as np
 import os, sys
+from io import BytesIO
+import cv2
 
 # import matplotlib.pylab as plt
 # from tqdm.notebook import tqdm
@@ -481,3 +483,72 @@ def plot_bbox_from_df(df_bbox, dicom, image_path):
     #cv2.imshow(inputImage)
     cv2.imwrite(image_path, inputImage)
     return True
+
+# Convert DICOM to Numpy Array
+def dicom2array(file, voi_lut=True, fix_monochrome=True):
+    """Convert DICOM file to numy array
+    
+    Args:
+        file : input object or uploaded file
+        path (str): Path to the DICOM file to be converted
+        voi_lut (bool): Whether or not VOI LUT is available
+        fix_monochrome (bool): Whether or not to apply MONOCHROME fix
+        
+    Returns:
+        Numpy array of the respective DICOM file
+    """
+    
+    # Use the pydicom library to read the DICOM file
+
+    if not isinstance(file, (pydicom.FileDataset, pydicom.dataset.Dataset)):
+        try: # If file is uploaded with fastapi.UploadFile
+            path = BytesIO(file)
+            dicom = pydicom.read_file(path)
+        except: # If file is uploaded with streamlit.file_uploader
+            dicom = pydicom.read_file(file)
+    else: # if file is readed dicom file
+        dicom = file
+    
+    # VOI LUT (if available by DICOM device) is used to transform raw DICOM data to "human-friendly" view
+    if voi_lut:
+        data = apply_voi_lut(dicom.pixel_array, dicom)
+    else:
+        data = dicom.pixel_array
+        
+    # Depending on this value, X-ray may look inverted - fix that
+    if fix_monochrome and dicom.PhotometricInterpretation == "MONOCHROME1":
+        data = np.amax(data) - data
+        
+    # Normalize the image array
+    data = data - np.min(data)
+    data = data / np.max(data)
+    data = (data * 255).astype(np.uint8)
+    
+    return dicom, data
+
+def resize_image(array, size, keep_ratio=False, resample=Image.LANCZOS):
+    image = Image.fromarray(array)
+    
+    if keep_ratio:
+        image.thumbnail((size, size), resample)
+    else:
+        image = image.resize((size, size), resample)
+    
+    return np.array(image)
+
+def get_png_file(ds, res_dir):
+    try:
+        file_name = 'original.png'
+        image_load = ''
+
+        if isinstance(ds, (pydicom.FileDataset, pydicom.dataset.Dataset)):
+            dicom, image_load = dicom2array(ds)
+        else:
+            image_load = ds
+
+        image_load = resize_image(image_load, size=512, keep_ratio=True)
+        cv2.imwrite(os.path.join(res_dir, file_name), image_load)
+
+        return True, file_name
+    except:
+        return False, 'Cannot get png file'

@@ -13,9 +13,10 @@ import gc
 import argparse
 import json
 from evt_classes import *
-from Utilis_DICOM import array_to_dicom, plot_bbox_from_df
+from Utilis_DICOM import array_to_dicom, plot_bbox_from_df, get_png_file
 from Constant import PACS_ADDR, PACS_PORT, AE_TITLE_SCP
 from model.classification_pylon.predict import main as pylon_predict
+from model.covid19_admission.predict_admission import main as covid_predict
 import datetime
 
 # from model.covid19_admission.predict_admission import main as covid_predict
@@ -37,6 +38,7 @@ parser.add_argument('-m', '--model', type=str, default="", help="Model's Name")
 parser.add_argument('-b', '--bounding_box', type=str, default="", help="Bounding Box Dict")
 parser.add_argument('-s', '--start_date', type=str, default="", help="Start Date")
 parser.add_argument('-e', '--end_date', type=str, default="", help="End Date")
+parser.add_argument('-d', '--data', type=str, default="", help="Related Data")
 
 args = parser.parse_args()
 
@@ -115,7 +117,6 @@ def get_all(hn, acc_no, start_date, end_date):
                 json.dump(all_data, f)
     except Exception as e:
         print(traceback.format_exc())
-        # print(e)
 
 # get patient's info
 def get_info(hn):
@@ -144,15 +145,15 @@ def get_info(hn):
                     break
     except Exception as e:
         print(traceback.format_exc())
-        print(e)
 
 # get dicom file
 def get_dicom(acc_no):
+    file_dir = os.path.join(TEMP_DIR, "{}_get".format(acc_no))
+    if not os.path.exists(file_dir):
+        os.makedirs(file_dir)
     try:
         acc_no = str(acc_no)
-        file_dir = os.path.join(TEMP_DIR, "{}_get".format(acc_no))
-        if not os.path.exists(file_dir):
-            os.makedirs(file_dir)
+        
         if os.path.exists(os.path.join(PACS_DIR, acc_no + '.evt')):
             event = load_file(os.path.join(PACS_DIR, acc_no + '.evt'))
             ds = event.dataset
@@ -164,15 +165,26 @@ def get_dicom(acc_no):
                 f.write('not found')
     except Exception as e:
         print(traceback.format_exc())
-        print(e)
+        with open(os.path.join(file_dir, "fail.txt"), 'w') as f:
+            f.write(str(e))
 
 # inference
-def infer(acc_no, model_name, start_time):
+def infer(acc_no, model_name, start_time, data):
+    file_dir = os.path.join(TEMP_DIR, "{}_{}_{}".format(model_name, acc_no, start_time))
+    if not os.path.exists(file_dir):
+        os.makedirs(file_dir)
     try:
+        try:
+            record = json.loads(data)
+        except:
+            record = {}
+
         acc_no = str(acc_no)
-        file_dir = os.path.join(TEMP_DIR, "{}_{}_{}".format(model_name, acc_no, start_time))
-        if not os.path.exists(file_dir):
-            os.makedirs(file_dir)
+        
+        res_dir = os.path.join(file_dir, 'result')
+        if not os.path.exists(res_dir):
+            os.makedirs(res_dir)
+
         if os.path.exists(os.path.join(PACS_DIR, acc_no + '.evt')):
             event = load_file(os.path.join(PACS_DIR, acc_no + '.evt'))
             ds = event.dataset
@@ -182,28 +194,38 @@ def infer(acc_no, model_name, start_time):
                 with open(os.path.join(file_dir, "fail.txt"), 'w') as f:
                     f.write('Cannot infer this dicom')
                 return
+            
+            # save original file in png format
+            status, message = get_png_file(ds, res_dir)
+            if not status:
+                with open(os.path.join(file_dir, "fail.txt"), 'w') as f:
+                    f.write(message)
+                return
 
+            # for model
+            # result must be saved in prediction.txt in res_dir
+            # if there is gradcam image, gradcam image also must be saved in res_dir
             message = "Error occurred"
             result = False
             if "classification_pylon" in model_name:
-                result, message = pylon_predict(ds, file_dir, model_name)
-            # elif model_name == "covid19_admission":
-            #     result = covid_predict(file_dir)
+                result, message = pylon_predict(ds, res_dir, model_name)
+            elif model_name == "covid19_admission":
+                result, message = covid_predict(ds, res_dir, record)
             else:
                 message = "Model not found"
-
             if result:
                 with open(os.path.join(file_dir, "success.txt"), 'w') as f:
                     f.write('infer successfully')
             else:
                 with open(os.path.join(file_dir, "fail.txt"), 'w') as f:
-                    f.write(message)
+                    f.write(str(message))
         else:
             with open(os.path.join(file_dir, "fail.txt"), 'w') as f:
                 f.write('Cannot find dicom file')
     except Exception as e:
         print(traceback.format_exc())
-        print(e)
+        with open(os.path.join(file_dir, "fail.txt"), 'w') as f:
+            f.write(str(e))
 
 # save dicom to PACS
 def save_to_pacs(acc_no, bbox):
@@ -289,7 +311,7 @@ def save_to_pacs(acc_no, bbox):
     except Exception as e:
         bbox_heatmap_dir = os.path.join(BASE_DIR, 'resources', 'temp', ds.AccessionNumber + '_store')
         with open(os.path.join(bbox_heatmap_dir, "fail.txt"), 'w') as f:
-            f.write(e)
+            f.write(str(e))
         print(e)
 
 def convert_evt_to_dummy(acc_no_list):
@@ -329,91 +351,6 @@ def convert_evt_to_dummy(acc_no_list):
         else:
             log_data.to_csv(log_clear_dicom_path, index=False, mode='a', header=False)
 
-"""
-LOCAL DIRECTORY
-"""
-def get_all_local(hn, acc_no, start_date, end_date):
-    try:
-        if hn == "None": hn = None
-        if acc_no == "None": acc_no = None
-        if start_date == "None": start_date = None
-        if end_date == "None": end_date = None
-
-        all_data = []
-        for file in os.listdir(LOCAL_DIR):
-            if file.endswith('.dcm'):
-                ds = pydicom.dcmread(os.path.join(LOCAL_DIR, file))
-                dcm_date = extract_date(ds.StudyDate, ds.StudyTime)
-                if (not hn) and (not acc_no) and (not start_date) and (not end_date):
-                    data = extract_ds_info(ds)
-                    all_data.append(data)
-                elif ((not hn) or (hn and (hn in ds.PatientID))) \
-                    and ((not acc_no) or (acc_no and (acc_no in ds.AccessionNumber))) \
-                    and ((not start_date) or (start_date and (dcm_date >= datetime.datetime.fromtimestamp(int(start_date)/1000)))) \
-                    and ((not end_date) or (end_date and (dcm_date <= datetime.datetime.fromtimestamp(int(end_date)/1000)))):
-                    data = extract_ds_info(ds)
-                    all_data.append(data)
-        if all_data != []:
-            with open(os.path.join(TEMP_DIR, "local_dicom_files_{}.json".format(hn)), 'w') as f:
-                json.dump(all_data, f)
-    except Exception as e:
-        print(traceback.format_exc())
-
-def get_info_local(hn):
-    try:
-        all_data = {}
-        for file in os.listdir(LOCAL_DIR):
-            if file.endswith('.dcm'):
-                ds = pydicom.dcmread(os.path.join(LOCAL_DIR, file))
-                if ds.PatientID == hn:
-                    data = dict()
-                    data['Patient ID'] = ds.PatientID
-                    data['Patient Name'] =  ds.PatientName.given_name + " " + ds.PatientName.family_name
-                    data['Patient Sex'] = ds.PatientSex
-                    try:
-                        data['Patient Birthdate'] = str(pd.to_datetime(ds.PatientBirthDate))
-                    except:
-                        data['Patient Birthdate'] = ds.PatientBirthDate
-                    if 'PatientAge' in ds:
-                        data['Age'] = ds.PatientAge
-                    all_data = data
-                    with open(os.path.join(TEMP_DIR, "local_dicom_info_{}.json".format(hn)), 'w') as f:
-                        json.dump(all_data, f)
-                    break
-    except Exception as e:
-        print(traceback.format_exc())
-
-def infer_local(acc_no, model_name):
-    try:
-        acc_no = str(acc_no)
-        file_dir = os.path.join(TEMP_DIR, "local_{}_{}".format(model_name, acc_no))
-        if not os.path.exists(file_dir):
-            os.makedirs(file_dir)
-        for file in os.listdir(LOCAL_DIR):
-            if file.endswith('.dcm'):
-                ds = pydicom.dcmread(os.path.join(LOCAL_DIR, file))
-                if ds.AccessionNumber == acc_no:
-                    message = "Error occurred"
-                    result = False
-                    if "classification_pylon" in model_name:
-                        result, message = pylon_predict(ds, file_dir, model_name)
-                    # elif model_name == "covid19_admission":
-                    #     result = covid_predict(file_dir)
-                    else:
-                        message = "Model not found"
-
-                    if result:
-                        with open(os.path.join(file_dir, "success.txt"), 'w') as f:
-                            f.write('infer successfully')
-                    else:
-                        with open(os.path.join(file_dir, "fail.txt"), 'w') as f:
-                            f.write(message)
-        else:
-            with open(os.path.join(file_dir, "fail.txt"), 'w') as f:
-                f.write('Cannot find dicom file')
-    except Exception as e:
-        print(traceback.format_exc())
-
 def main() -> None:
     hn = args.hn
     func = args.function
@@ -423,6 +360,7 @@ def main() -> None:
     bbox = args.bounding_box
     start_date = args.start_date
     end_date = args.end_date
+    data = args.data
     if func == "get_info":
         get_info(hn)
     elif func == "get_all":
@@ -430,17 +368,11 @@ def main() -> None:
     elif func == "get_dicom":
         get_dicom(acc_no)
     elif func == "infer":
-        infer(acc_no, model, start_date)
+        infer(acc_no, model, start_date, data)
     elif func == "save_to_pacs":
         save_to_pacs(acc_no, bbox)
     elif func == "convert_evt_to_dummy":
         convert_evt_to_dummy(acc_no_list)
-    elif func == "get_info_local":
-        get_info_local(hn)
-    elif func == "get_all_local":
-        get_all_local(hn, acc_no, start_date, end_date)
-    elif func == "infer_local":
-        infer_local(acc_no, model)
 
 if __name__ == "__main__":
     main()
