@@ -40,7 +40,7 @@ def validate_authorization(authorization, result_id):
         result = db["pred_results"].find_one({"_id": ObjectId(result_id)})
         project = db["projects"].find_one({"_id": result["project_id"]})
         if user["_id"] in project["head"]:
-            return True, ""
+            return True, project["task"]
         return False, "User is not project's head"
     except:
         print(traceback.format_exc())
@@ -52,7 +52,7 @@ def remove_file(path):
         print("Finish clearing temporary file")
 
 # get all dicom's info by condition
-@router.get("/HN/", status_code=200)
+@router.get("/", status_code=200)
 async def get_all(hn: Optional[str] = None, acc_no: Optional[str] = None, start_date: Optional[str] = None, end_date: Optional[str] = None):
     try: 
         if hn == None: hn = "None"
@@ -122,10 +122,10 @@ async def save_to_pacs(authorization: Optional[str] = Header(None), bbox_data: s
         print("Start save to PACS process")
         # string to dict
         bbox_dict = json.loads(bbox_data)
-        success, message = validate_authorization(authorization, bbox_dict["result_id"])
+        success, modelMsg = validate_authorization(authorization, bbox_dict["result_id"])
         if not success:
-            print(message)
-            return JSONResponse(content={"success": False, "message": message}, status_code=400)
+            print(modelMsg)
+            return JSONResponse(content={"success": False, "message": modelMsg}, status_code=400)
 
         acc_no = bbox_dict["acc_no"]
 
@@ -145,7 +145,8 @@ async def save_to_pacs(authorization: Optional[str] = Header(None), bbox_data: s
         # delete zip file
         os.remove(os.path.join(bbox_heatmap_dir, file.filename))
 
-        subprocess.run(["python", os.path.join(BASE_DIR, "pacs_connection", "dicom_function.py"), "-f", "save_to_pacs", "-a", acc_no, "-b", bbox_data])
+        subprocess.run(["python", os.path.join(BASE_DIR, "pacs_connection", "dicom_function.py"), 
+        "-f", "save_to_pacs", "-a", acc_no, "-b", bbox_data, "-m", modelMsg])
 
         if os.path.exists(os.path.join(bbox_heatmap_dir, "fail.txt")):
             message = "error"

@@ -61,8 +61,11 @@ def SCU(path_dcm, addr, port, finding_type, ae_title_scp = b'ANY-SCP'):
         patientID = df[df['ID'] == int(ds.PatientID)].index.tolist()
         if patientID == []:
             pd.DataFrame.from_records([{'ID': ds.PatientID}]).to_csv(hn_map_path, index=False, mode='a', header=False)
-            patientID = len(df) - 1
-        patientID = patientID[0]
+            patientID = len(df)
+        try:
+            patientID = patientID[0]
+        except:
+            patientID = patientID
         del df
     metadata_dict["ID"] = patientID
     # metadata_dict["ae_title"] = ae_title_scp
