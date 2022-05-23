@@ -14,6 +14,8 @@ from pynetdicom import AE, evt, StoragePresentationContexts, VerificationPresent
 from pynetdicom.sop_class import ComputedRadiographyImageStorage, Verification, DigitalXRayImageStorageForPresentation
 from pynetdicom.pdu_primitives import SCP_SCU_RoleSelectionNegotiation
 
+import pymongo
+
 import logging
 from pynetdicom import debug_logger
 # Setup logging to use the StreamHandler at the debug level
@@ -214,19 +216,7 @@ def handle_store(event):
     Path(folder_path).mkdir(parents=True, exist_ok=True)
     hn_map_path = os.path.join(folder_path, 'hn_map.csv')
 
-    patientID = -1
-    if not os.path.exists(hn_map_path):
-        pd.DataFrame.from_records([{'ID': ds.PatientID}]).to_csv(hn_map_path, index=False)
-        patientID = 0
-    else:
-        df = pd.read_csv(hn_map_path)
-        patientID = df[df['ID'] == int(ds.PatientID)].index.tolist()
-        if patientID == []:
-            pd.DataFrame.from_records([{'ID': ds.PatientID}]).to_csv(hn_map_path, index=False, mode='a', header=False)
-            patientID = len(df) - 1
-        del df
-
-    metadata_df.loc[0, 'ID'] = patientID
+    metadata_df.loc[0, 'ID'] = get_patient_id(hn_map_path, ds.PatientID)
 
     log_dir = f'{BASE_DIR}/resources/log/log_receive_dcm/{year}/{month}'
     Path(log_dir).mkdir(parents=True, exist_ok=True)
@@ -237,6 +227,17 @@ def handle_store(event):
         metadata_df.to_csv(path_store_log_receive_dcm, index=False)
     else:
         metadata_df.to_csv(path_store_log_receive_dcm, index=False, mode='a', header=False)
+
+    try:
+        db = pymongo.MongoClient(MONGO_URL)["webapp"]
+        db['python_dcm_paths'].insert_one({
+            'accession_no': ds.AccessionNumber,
+            'hn': ds.PatientID,
+            'study_time': extract_date(ds.StudyDate, ds.StudyTime)
+        })
+        print('Save information in database')
+    except:
+        pass
 
     # Avoid processing other X-ray part. (Focus only Chest X-ray)
     # prod_code_accept_list = ['R1201', 'R1203', 'R2201', 'R2202']

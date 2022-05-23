@@ -54,12 +54,31 @@ def load_file(file_path):
     return data
 
 # get all dicom's info by condition
-def get_all(hn, acc_no, start_date, end_date):
+def get_all(hn, acc_no, start_date, end_date, acc_no_list, now):
     try:
         if hn == "None": hn = None
         if acc_no == "None": acc_no = None
         if start_date == "None": start_date = None
         if end_date == "None": end_date = None
+        if acc_no_list == "None": acc_no_list = None
+        try:
+            acc_no_list = acc_no_list.split(' ')
+            print(acc_no_list)
+            all_data = []
+            for acc_no in acc_no_list:
+                try:
+                    event = load_file(os.path.join(PACS_DIR, acc_no + '.evt'))
+                    ds = event.dataset
+                    data = get_all_ds_info(ds)
+                    all_data.append(data)
+                except:
+                    continue
+            with open(os.path.join(TEMP_DIR, "dicom_files_{}.json".format(now)), 'w') as f:
+                json.dump(all_data, f)
+            return
+        except:
+            pass
+
         all_data = []
         for file in os.listdir(PACS_DIR):
             if file.endswith('.evt'):
@@ -71,15 +90,14 @@ def get_all(hn, acc_no, start_date, end_date):
                 if (not hn) and (not acc_no) and (not start_date) and (not end_date):
                     data = get_all_ds_info(ds)
                     all_data.append(data)
-                elif ((not hn) or (hn and (hn in ds.PatientID))) \
-                    and ((not acc_no) or (acc_no and (acc_no in ds.AccessionNumber))) \
+                elif ((not hn) or (hn and (hn == ds.PatientID))) \
+                    and ((not acc_no) or (acc_no and (acc_no == ds.AccessionNumber))) \
                     and ((not start_date) or (start_date and (dcm_date >= datetime.datetime.fromtimestamp(int(start_date)/1000)))) \
                     and ((not end_date) or (end_date and (dcm_date <= datetime.datetime.fromtimestamp(int(end_date)/1000)))):
                     data = get_all_ds_info(ds)
                     all_data.append(data)
-        if all_data != []:
-            with open(os.path.join(TEMP_DIR, "dicom_files_{}.json".format(hn)), 'w') as f:
-                json.dump(all_data, f)
+        with open(os.path.join(TEMP_DIR, "dicom_files_{}.json".format(now)), 'w') as f:
+            json.dump(all_data, f)
     except Exception as e:
         print(traceback.format_exc())
 
@@ -329,7 +347,7 @@ def main() -> None:
     if func == "get_info":
         get_info(hn)
     elif func == "get_all":
-        get_all(hn, acc_no, start_date, end_date)
+        get_all(hn, acc_no, start_date, end_date, acc_no_list, data)
     elif func == "get_dicom":
         get_dicom(acc_no)
     elif func == "infer":

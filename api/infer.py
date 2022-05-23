@@ -33,12 +33,10 @@ def remove_file(path):
 
 # inference
 @router.post("/", status_code=200)
-async def index(inferData: InferData, background_tasks: BackgroundTasks = BackgroundTasks()):
+async def infer(inferData: InferData, background_tasks: BackgroundTasks = BackgroundTasks()):
     model_name = inferData.model_name
     acc_no = inferData.acc_no
     record = inferData.record
-    # print(model_name, acc_no)
-    # print(record)
 
     now = datetime.now().strftime("%H%M%S%f")
 

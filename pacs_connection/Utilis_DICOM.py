@@ -15,7 +15,8 @@ from pathlib import Path
 
 from datetime import datetime
 
-from Constant import AI_VERSION
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from Constant import AI_VERSION, MONGO_URL
 
 def extract_dcm_info(ds):
     """
@@ -589,3 +590,21 @@ def get_all_ds_info(ds):
         data['Patient Birthdate'] = ds.PatientBirthDate
     # data['Proc Description'] = 'Chest PA upright'
     return data
+
+def get_patient_id(hn_map_path, hn):
+    patientID = -1
+    if not os.path.exists(hn_map_path):
+        pd.DataFrame.from_records([{'ID': hn}]).to_csv(hn_map_path, index=False)
+        patientID = 0
+    else:
+        df = pd.read_csv(hn_map_path)
+        patientID = df[df['ID'] == int(hn)].index.tolist()
+        if patientID == []:
+            pd.DataFrame.from_records([{'ID': hn}]).to_csv(hn_map_path, index=False, mode='a', header=False)
+            patientID = len(df)
+        try:
+            patientID = patientID[0]
+        except:
+            patientID = patientID
+        del df
+    return patientID

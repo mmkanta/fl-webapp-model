@@ -1,7 +1,8 @@
 from starlette.responses import JSONResponse, FileResponse
 from starlette.background import BackgroundTasks
 from fastapi import APIRouter, Form, File, UploadFile, Body, Request, Header
-from typing import Optional
+from typing import Optional, List
+from pydantic import BaseModel
 import shutil
 import subprocess
 import traceback
@@ -11,7 +12,7 @@ import pymongo
 from bson.objectid import ObjectId
 import json
 import pandas as pd
-import datetime
+from datetime import datetime, date, timedelta
 from zipfile import ZipFile
 from Constant import MONGO_URL, SECRET
 from pathlib import Path
@@ -24,6 +25,13 @@ router = APIRouter()
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PACS_DIR = os.path.join(BASE_DIR, "resources", "files")
 TEMP_DIR = os.path.join(BASE_DIR, "resources", "temp")
+
+class Condition(BaseModel):
+    hn: Optional[str] = None
+    acc_no: Optional[str] = None
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    acc_no_list: Optional[List[str]] = None
 
 # validate user when save dicom to PACS
 def validate_authorization(authorization, result_id):
@@ -52,25 +60,29 @@ def remove_file(path):
         print("Finish clearing temporary file")
 
 # get all dicom's info by condition
-@router.get("/", status_code=200)
-async def get_all(hn: Optional[str] = None, acc_no: Optional[str] = None, start_date: Optional[str] = None, end_date: Optional[str] = None):
+@router.post("/", status_code=200)
+async def get_dicom_info_all_by_condition(condition: Condition):
     try: 
-        if hn == None: hn = "None"
-        if acc_no == None: acc_no = "None"
-        if start_date == None: start_date = "None"
-        if end_date == None: end_date = "None"
+        if condition.hn == None: condition.hn = "None"
+        if condition.acc_no == None: condition.acc_no = "None"
+        if condition.start_date == None: condition.start_date = "None"
+        if condition.end_date == None: condition.end_date = "None"
+        if condition.acc_no_list == None: condition.acc_no_list = "None"
+        else: condition.acc_no_list = " ".join(condition.acc_no_list)
         # print(datetime.datetime.fromtimestamp(int(start_date)/1000))
+        now = datetime.now().strftime("%H%M%S%f")
+
         subprocess.run([
             "python", 
             os.path.join(BASE_DIR, "pacs_connection", "dicom_function.py"), 
-            "-n", hn, "-f", "get_all", "-a", acc_no, "-s", start_date, "-e", end_date
+            "-n", condition.hn, "-f", "get_all", "-a", condition.acc_no, "-s", condition.start_date, "-e", condition.end_date, "-d", now, "-l", condition.acc_no_list
         ])
-        if os.path.exists(os.path.join(TEMP_DIR, "dicom_files_{}.json".format(hn))):
-            with open(os.path.join(TEMP_DIR, "dicom_files_{}.json".format(hn)), "r") as f:
+        if os.path.exists(os.path.join(TEMP_DIR, "dicom_files_{}.json".format(now))):
+            with open(os.path.join(TEMP_DIR, "dicom_files_{}.json".format(now)), "r") as f:
                 data = json.load(f)
-            os.remove(os.path.join(TEMP_DIR, "dicom_files_{}.json".format(hn)))
+            os.remove(os.path.join(TEMP_DIR, "dicom_files_{}.json".format(now)))
         else:
-            data = {}
+            data = []
         return JSONResponse(content={"success": True, "message": "Get dicom files by HN successfully", "data": data}, status_code=200)
     except Exception as e:
         print(traceback.format_exc())
@@ -79,7 +91,7 @@ async def get_all(hn: Optional[str] = None, acc_no: Optional[str] = None, start_
 
 # get patient's info
 @router.get("/HN/{hn}/info", status_code=200)
-async def get_info_by_hn(hn: str):
+async def get_patient_info_by_hn(hn: str):
     try: 
         subprocess.run(["python", os.path.join(BASE_DIR, "pacs_connection", "dicom_function.py"), "-n", hn, "-f", "get_info"])
         if os.path.exists(os.path.join(TEMP_DIR, "dicom_info_{}.json".format(hn))):
@@ -164,17 +176,18 @@ async def save_to_pacs(authorization: Optional[str] = Header(None), bbox_data: s
 @router.delete("/clear", status_code=200)
 async def clear_dicom_folder():
     LOG_DIR = os.path.join(BASE_DIR, "resources", "log", "log_receive_dcm")
-    today_date = datetime.date.today()
+    today_date = date.today()
     try:
         print(str(today_date), 'Start clearing dicom process')
         # delete dicom (2 weeks)
-        delete_date = today_date - datetime.timedelta(days=15) 
+        delete_date = today_date - timedelta(days=15) 
         year = str(delete_date.year)
         month = str(delete_date.month)
 
         folder_path = os.path.join(BASE_DIR, 'resources', 'log', 'log_clear_dicom', 'delete_dicom', year, month)
         Path(folder_path).mkdir(parents=True, exist_ok=True)
 
+        deleted_acc_no = []
         log_delete_dicom_path = os.path.join(folder_path, str(today_date)+'.csv')
         if os.path.exists(os.path.join(LOG_DIR, year, month, str(delete_date) + '.csv')):
             # print(str(delete_date) + '.csv')
@@ -188,6 +201,7 @@ async def clear_dicom_folder():
                 log_data = {'Accession Number': acc_no, "Success": ""}
                 if acc_no not in used_acc_no and os.path.exists(os.path.join(PACS_DIR, acc_no + '.evt')):
                     os.remove(os.path.join(PACS_DIR, acc_no + '.evt'))
+                    deleted_acc_no.append(acc_no)
                     log_data = {'Accession Number': acc_no, "Success": True}
                     # print(log_data)
                     log_data = pd.DataFrame.from_records([log_data])
@@ -197,13 +211,13 @@ async def clear_dicom_folder():
                         log_data.to_csv(log_delete_dicom_path, index=False, mode='a', header=False)
         
         # change original dicom to dummy dicom (1 month)
-        dummy_date = today_date - datetime.timedelta(days=31)  
+        dummy_date = today_date - timedelta(days=31)  
         year = str(dummy_date.year)
         month = str(dummy_date.month)
         used_acc_no = []
         # print(dummy_date)
         if os.path.exists(os.path.join(LOG_DIR, year, month, str(dummy_date) + '.csv')):
-            print(str(dummy_date) + '.csv')
+            # print(str(dummy_date) + '.csv')
             df = pd.read_csv(os.path.join(LOG_DIR, year, month, str(dummy_date) + '.csv'))
             unique_acc_no = set(df["Accession Number"])
             used_acc_no = db["images"].distinct("accession_no", {
@@ -214,7 +228,7 @@ async def clear_dicom_folder():
             if used_acc_no != []:
                 subprocess.run(["python", os.path.join(BASE_DIR, "pacs_connection", "dicom_function.py"), "-f", "convert_evt_to_dummy", "-l", " ".join(used_acc_no)])
         
-        return JSONResponse(content={"success": True, "message": "Finish clearing dicom", "data": used_acc_no}, status_code=200)
+        return JSONResponse(content={"success": True, "message": "Finish clearing dicom", "data": used_acc_no + deleted_acc_no}, status_code=200)
     except Exception as e:
         print(traceback.format_exc())
         return JSONResponse(content={"success": False, "message": e}, status_code=500)
