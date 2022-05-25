@@ -13,7 +13,7 @@ import gc
 import argparse
 import json
 from evt_classes import *
-from Utilis_DICOM import array_to_dicom, plot_bbox_from_df, get_png_file
+from Utilis_DICOM import array_to_dicom, plot_bbox_from_df, get_png_file, get_all_ds_info, extract_date
 from Constant import PACS_ADDR, PACS_PORT, AE_TITLE_SCP
 from model.classification_pylon.predict import main as pylon_predict
 from model.covid19_admission.predict_admission import main as covid_predict
@@ -53,48 +53,32 @@ def load_file(file_path):
         data = pickle.load(f)
     return data
 
-def extract_date(StudyDate, StudyTime):
-    study_date_time = ""
-    try:
-        try:
-            study_date_time = pd.to_datetime(StudyDate + StudyTime, infer_datetime_format=True)
-        except:
-            study_date_time = pd.to_datetime(StudyDate, infer_datetime_format=True)
-    except:
-        study_date_time = ""
-    return study_date_time
-
-# extract dicom info for 'select cxr' page
-def extract_ds_info(ds):
-    data = dict()
-    data['Accession No'] = ds.AccessionNumber
-    data['Modality'] = ds.Modality
-    data['Patient ID'] = int(ds.PatientID)
-    data['Patient Name'] = ds.PatientName.given_name + " " + ds.PatientName.family_name
-    data['Patient Sex'] = ds.PatientSex
-    try:
-        data['Age'] = int(ds.PatientAge.split('Y')[0])
-    except:
-        data['Age'] = None
-    try:
-        data['Procedure Code'] = ds[0x020,0x0010].value
-    except:
-        data["Procedure Code"] = ""
-    data['Study Date Time'] = str(extract_date(ds.StudyDate, ds.StudyTime))
-    try:
-        data['Patient Birthdate'] = str(pd.to_datetime(ds.PatientBirthDate))
-    except:
-        data['Patient Birthdate'] = ds.PatientBirthDate
-    # data['Proc Description'] = 'Chest PA upright'
-    return data
-
 # get all dicom's info by condition
-def get_all(hn, acc_no, start_date, end_date):
+def get_all(hn, acc_no, start_date, end_date, acc_no_list, now):
     try:
         if hn == "None": hn = None
         if acc_no == "None": acc_no = None
         if start_date == "None": start_date = None
         if end_date == "None": end_date = None
+        if acc_no_list == "None": acc_no_list = None
+        try:
+            acc_no_list = acc_no_list.split(' ')
+            print(acc_no_list)
+            all_data = []
+            for acc_no in acc_no_list:
+                try:
+                    event = load_file(os.path.join(PACS_DIR, acc_no + '.evt'))
+                    ds = event.dataset
+                    data = get_all_ds_info(ds)
+                    all_data.append(data)
+                except:
+                    continue
+            with open(os.path.join(TEMP_DIR, "dicom_files_{}.json".format(now)), 'w') as f:
+                json.dump(all_data, f)
+            return
+        except:
+            pass
+
         all_data = []
         for file in os.listdir(PACS_DIR):
             if file.endswith('.evt'):
@@ -104,17 +88,16 @@ def get_all(hn, acc_no, start_date, end_date):
                 if ds.PatientID == 'anonymous':
                     continue
                 if (not hn) and (not acc_no) and (not start_date) and (not end_date):
-                    data = extract_ds_info(ds)
+                    data = get_all_ds_info(ds)
                     all_data.append(data)
-                elif ((not hn) or (hn and (hn in ds.PatientID))) \
-                    and ((not acc_no) or (acc_no and (acc_no in ds.AccessionNumber))) \
+                elif ((not hn) or (hn and (hn == ds.PatientID))) \
+                    and ((not acc_no) or (acc_no and (acc_no == ds.AccessionNumber))) \
                     and ((not start_date) or (start_date and (dcm_date >= datetime.datetime.fromtimestamp(int(start_date)/1000)))) \
                     and ((not end_date) or (end_date and (dcm_date <= datetime.datetime.fromtimestamp(int(end_date)/1000)))):
-                    data = extract_ds_info(ds)
+                    data = get_all_ds_info(ds)
                     all_data.append(data)
-        if all_data != []:
-            with open(os.path.join(TEMP_DIR, "dicom_files_{}.json".format(hn)), 'w') as f:
-                json.dump(all_data, f)
+        with open(os.path.join(TEMP_DIR, "dicom_files_{}.json".format(now)), 'w') as f:
+            json.dump(all_data, f)
     except Exception as e:
         print(traceback.format_exc())
 
@@ -228,7 +211,7 @@ def infer(acc_no, model_name, start_time, data):
             f.write(str(e))
 
 # save dicom to PACS
-def save_to_pacs(acc_no, bbox):
+def save_to_pacs(acc_no, bbox, model):
     try:
         # bbox string to dict
         bbox_dict = json.loads(bbox)
@@ -257,7 +240,7 @@ def save_to_pacs(acc_no, bbox):
             if file.endswith('.png'):
                 filename = os.fsdecode(file)
                 finding = filename.split('.')[0]
-                ds_modify, dcm_compressed_path = array_to_dicom(ds, bbox_heatmap_dir, filename)
+                ds_modify, dcm_compressed_path = array_to_dicom(ds, bbox_heatmap_dir, filename, model)
                 if dcm_compressed_path is None:
                     print(f'Cannot convert image {finding} to dicom')
                     with open(os.path.join(bbox_heatmap_dir, "fail.txt"), 'w') as f:
@@ -280,7 +263,7 @@ def save_to_pacs(acc_no, bbox):
         if isinstance(bbox_dict['data'], list) and len(bbox_dict['data']) > 0:
             # save rendered image to PACS
             plot_bbox_from_df(bbox_dict, ds, os.path.join(bbox_heatmap_dir, 'rendered_bbox_image.png'))
-            ds_modify, dcm_compressed_path = array_to_dicom(ds, bbox_heatmap_dir, 'rendered_bbox_image.png')
+            ds_modify, dcm_compressed_path = array_to_dicom(ds, bbox_heatmap_dir, 'rendered_bbox_image.png', model)
 
             # SCU Role
             start_time = time.time()
@@ -364,13 +347,13 @@ def main() -> None:
     if func == "get_info":
         get_info(hn)
     elif func == "get_all":
-        get_all(hn, acc_no, start_date, end_date)
+        get_all(hn, acc_no, start_date, end_date, acc_no_list, data)
     elif func == "get_dicom":
         get_dicom(acc_no)
     elif func == "infer":
         infer(acc_no, model, start_date, data)
     elif func == "save_to_pacs":
-        save_to_pacs(acc_no, bbox)
+        save_to_pacs(acc_no, bbox, model)
     elif func == "convert_evt_to_dummy":
         convert_evt_to_dummy(acc_no_list)
 

@@ -15,8 +15,8 @@ from pathlib import Path
 
 from datetime import datetime
 
-# from Constant import AI_VERSION
-AI_VERSION = "UTC_MDCU_Rad_v1.0.2.6"
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from Constant import AI_VERSION, MONGO_URL
 
 def extract_dcm_info(ds):
     """
@@ -260,7 +260,8 @@ def create_path_and_save_png(ds, metadata_df, SIZE = 1024):
     else:
         metadata_df.to_csv(path_store_meta_data, index=False, mode='a', header=False)
     return
-    
+
+# ไม่ได้ใช้    
 def modify_dicom(ds, modifyDicomNPArray):
 
     # ยังมีปัญหาตอนเอา array เข้า DICOM ผ่าน pydicom ที่ทำให้สีเพี้ยน และ PACS อ่านไม่ได้
@@ -320,8 +321,7 @@ def modify_dicom(ds, modifyDicomNPArray):
 
     return ds
 
-
-def array_to_dicom(ds, dir, filename):
+def array_to_dicom(ds, dir, filename, model):
     import pydicom
     import PIL
     import io
@@ -346,7 +346,10 @@ def array_to_dicom(ds, dir, filename):
     ds_modify.PatientName = ds.PatientName
     ds_modify.PatientBirthDate = ds.PatientBirthDate
     ds_modify.PatientSex = ds.PatientSex
-    ds_modify.file_meta.ImplementationVersionName = AI_VERSION
+    try:
+        ds_modify.file_meta.ImplementationVersionName = AI_VERSION[model]
+    except:
+        ds_modify.file_meta.ImplementationVersionName = ""
 
     # Fix time to follow the original DICOM file (Due to time in DICOM Container not corespond to local time)
     ds_modify.StudyDate = ds.StudyDate
@@ -552,3 +555,56 @@ def get_png_file(ds, res_dir):
         return True, file_name
     except:
         return False, 'Cannot get png file'
+
+def extract_date(StudyDate, StudyTime):
+    study_date_time = ""
+    try:
+        try:
+            study_date_time = pd.to_datetime(StudyDate + StudyTime, infer_datetime_format=True)
+        except:
+            study_date_time = pd.to_datetime(StudyDate, infer_datetime_format=True)
+    except:
+        study_date_time = ""
+    return study_date_time
+
+# extract dicom info for 'select cxr' page
+def get_all_ds_info(ds):
+    data = dict()
+    data['Accession No'] = ds.AccessionNumber
+    data['Modality'] = ds.Modality
+    data['Patient ID'] = int(ds.PatientID)
+    data['Patient Name'] = ds.PatientName.given_name + " " + ds.PatientName.family_name
+    data['Patient Sex'] = ds.PatientSex
+    try:
+        data['Age'] = int(ds.PatientAge.split('Y')[0])
+    except:
+        data['Age'] = None
+    try:
+        data['Procedure Code'] = ds[0x020,0x0010].value
+    except:
+        data["Procedure Code"] = ""
+    data['Study Date Time'] = str(extract_date(ds.StudyDate, ds.StudyTime))
+    try:
+        data['Patient Birthdate'] = str(pd.to_datetime(ds.PatientBirthDate))
+    except:
+        data['Patient Birthdate'] = ds.PatientBirthDate
+    # data['Proc Description'] = 'Chest PA upright'
+    return data
+
+def get_patient_id(hn_map_path, hn):
+    patientID = -1
+    if not os.path.exists(hn_map_path):
+        pd.DataFrame.from_records([{'ID': hn}]).to_csv(hn_map_path, index=False)
+        patientID = 0
+    else:
+        df = pd.read_csv(hn_map_path)
+        patientID = df[df['ID'] == int(hn)].index.tolist()
+        if patientID == []:
+            pd.DataFrame.from_records([{'ID': hn}]).to_csv(hn_map_path, index=False, mode='a', header=False)
+            patientID = len(df)
+        try:
+            patientID = patientID[0]
+        except:
+            patientID = patientID
+        del df
+    return patientID
